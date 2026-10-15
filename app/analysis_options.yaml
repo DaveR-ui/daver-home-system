@@ -1,0 +1,8 @@
+# Lint baseline for the daver-home phone app.
+# The Flutter team's recommended rules; no project-specific overrides yet.
+analyzer:
+  exclude:
+    - build/**
+    - android/**
+    - ios/**
+include: package:flutter_lints/flutter.yaml

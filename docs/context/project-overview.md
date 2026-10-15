@@ -28,7 +28,7 @@ flowchart LR
     HA["Home Assistant<br/>single state authority"]
     MQ["Mosquitto<br/>MQTT-native bus"]
   end
-  APP["Phone app (Flutter, design only)<br/>REST + WebSocket"]
+  APP["Phone app (Flutter, scaffold)<br/>REST + WebSocket"]
   KDE["Plasma applet (tuya-bulb-widget)<br/>outside authoritative path"]
   DEV ---|"LocalTuya / tinytuya - LAN TCP/6668"| HA
   HA ---|"MQTT integration"| MQ
@@ -44,7 +44,7 @@ flowchart LR
 | C2 | Eclipse Mosquitto | Hub-internal MQTT bus for MQTT-native devices and extensions | Owner's PC (Docker) |
 | C3 | tuya-local-key | Harvests and maintains Tuya local keys (occasional, cloud-touching) | Owner's PC (Docker) |
 | C4 | tuya-bulb-widget | Provisioning/inspection evidence plus interim desktop fallback, outside the authoritative path | Owner PC (Plasma applet) |
-| C5 | Phone/desktop app (Flutter, design only) | Thin Home Assistant client: REST commands + WebSocket live state | Phone / desktop |
+| C5 | Phone app (Flutter, scaffold) | Thin Home Assistant client: REST commands + WebSocket live state | Phone / desktop |
 | C6 | This repo | The design corpus now; `deploy/` compose manifests later | n/a |
 
 ### State ownership
@@ -75,7 +75,7 @@ Home Assistant entity state is the **single source of truth**. Mosquitto holds M
 ## Common mistakes
 
 - Reading the original sketch literally and wiring the Tuya bulbs to MQTT - they speak the Tuya LAN protocol and are reached through LocalTuya ([[adr-0003-tuya-lan-protocol-over-mqtt-device-leg]]).
-- Treating this as a Flutter or backend implementation project - the deliverable now is architecture plus documentation; there is no runnable code.
+- Treating this as a general implementation project. The hub is still architecture plus documentation — no compose manifests and no runnable hub deployment — and the phone app is a minimal scaffold under `app/` that does not reach the hub yet. No Dart or Node backend is planned.
 - Assuming the Tuya cloud is never touched - provisioning and local-key rotation are the two exceptions; day-to-day control is LAN-only.
 
 ## References

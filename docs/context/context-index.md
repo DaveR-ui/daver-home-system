@@ -18,7 +18,7 @@ Navigation hub for the strategic docs in `docs/context/`. Each file covers exact
 - [hosting-architecture](hosting-architecture.md) — the hub's layer model, containers, networking, and hosting substrate.
 - [home-assistant-hub](home-assistant-hub.md) — Home Assistant as authority: entities, LocalTuya, recorder, automations, backup.
 - [mqtt-topic-map](mqtt-topic-map.md) — the MQTT topic taxonomy and JSON payload contract for MQTT-native devices.
-- [mobile-app-design](mobile-app-design.md) — the planned Flutter app: HA REST + WebSocket client, token, reconnect.
+- [mobile-app-design](mobile-app-design.md) — the Flutter app (design + `app/` scaffold): HA REST + WebSocket client, token, reconnect.
 - [provisioning-flow](provisioning-flow.md) — end-to-end flow from a paired Tuya device to an HA entity.
 - [tuya-local-key-integration](tuya-local-key-integration.md) — the `tuya-local-key` component: harvesting, output fields, rotation.
 - [tuya-bulb-widget-integration](tuya-bulb-widget-integration.md) — the `tuya-bulb-widget` boundary: evidence, fallback surface, link-mirror semantics.

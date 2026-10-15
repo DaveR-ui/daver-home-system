@@ -104,8 +104,10 @@ const NAME_EXEMPT = new Set(['README.md']);
 
 // Consumer adaptation (2/3a): directories never walked by the corpus scan. Dot
 // directories (.git, .venv, .pytest_cache, .mypy_cache, …) cover a consumer
-// repo's tooling; the rest are common build/vendor outputs.
-const SKIP_DIRS = new Set(['diagrams', 'node_modules', '__pycache__', 'dist', 'build', 'site-packages']);
+// repo's tooling; the rest are common build/vendor outputs. `app` is the
+// application source tree (Flutter): it is not part of the documentation corpus
+// and ships its own generated README.md files.
+const SKIP_DIRS = new Set(['app', 'diagrams', 'node_modules', '__pycache__', 'dist', 'build', 'site-packages']);
 
 // ----------------------------- File collection & classification ------------------------------
 

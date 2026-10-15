@@ -33,7 +33,7 @@ flowchart TB
     MQ["Eclipse Mosquitto - hub-internal MQTT bus :1883"]
     TK["tuya-local-key :8000 - harvest + maintain local keys"]
   end
-  APP["Phone app (Flutter, design only)"]
+  APP["Phone app (Flutter, scaffold)"]
   KDE["Plasma applet (tuya-bulb-widget) - out of authoritative path"]
   DEV ---|"Wi-Fi LAN - TCP/6668 + dps - LocalTuya/tinytuya"| HA
   TK ---|"id, uuid, local key, IP, dp map"| HA
@@ -50,7 +50,7 @@ flowchart TB
 | C2 | Eclipse Mosquitto | Hub-internal MQTT bus for MQTT-native devices and future extensions | Owner's PC, `:1883` | Home Assistant (MQTT integration) and MQTT-native devices |
 | C3 | tuya-local-key | Harvests and maintains Tuya local keys; detects silent rotations | Owner's PC, `:8000` | Tuya cloud (provisioning) and the owner's browser; feeds C1 |
 | C4 | tuya-bulb-widget | Provisioning/inspection evidence (dp discovery) plus interim desktop fallback | Owner PC (Plasma applet) | Tuya devices (LAN), directly |
-| C5 | Phone/desktop app (Flutter, design only) | Thin Home Assistant client: REST commands, WebSocket live state | Phone / desktop | Home Assistant only |
+| C5 | Phone app (Flutter, scaffold) | Thin Home Assistant client: REST commands, WebSocket live state | Phone / desktop | Home Assistant only |
 | C6 | This repo | Design corpus now; `deploy/` compose manifests later | n/a | n/a |
 
 ### Hosting topology

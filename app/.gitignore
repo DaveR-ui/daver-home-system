@@ -1,0 +1,14 @@
+# Dart and Flutter build output.
+.dart_tool/
+build/
+
+# Generated plugin registrants (created by `flutter create .` / pub).
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# Editor configuration.
+.idea/
+.vscode/
+
+# FVM Version Cache
+.fvm/

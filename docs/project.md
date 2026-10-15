@@ -3,7 +3,7 @@ last_updated: 2026-10-14
 status: active
 description: Agent entry point for daver-home-system — self-hosted home-IoT hub design (Home Assistant + Mosquitto + Tuya LAN), slices, and doc routing.
 tags: [project, entry-point]
-version: 1.0
+version: 1.2
 doc_language: en
 related: [project-overview]
 ---
@@ -12,7 +12,7 @@ related: [project-overview]
 
 ## Overview
 
-`daver-home-system` is a self-hosted, private home-IoT system in which the owner's always-on PC runs the hub and the phone is the central controller, with everyday control staying on the LAN. The hub is **Home Assistant Container** (the single state authority) plus an **Eclipse Mosquitto** broker (the hub-internal MQTT bus); the devices are existing **Tuya** bulbs and switches, already paired in the Smart Life app, spoken to locally over Wi-Fi via the Tuya LAN protocol (TCP/6668, dps) through the **LocalTuya** integration. Today the deliverable is an **architecture design plus a documentation corpus** — no runnable code. Two existing local projects are reused as components, unmodified: `tuya-local-key` (harvest and maintain Tuya local keys) and `tuya-bulb-widget` (an existing KDE Plasma desktop control surface). **Anti-goals:** no corporate-cloud control path, no new firmware and no re-pairing of devices, no runnable code yet (design and docs only), and the referenced repos are never modified by this one.
+`daver-home-system` is a self-hosted, private home-IoT system in which the owner's always-on PC runs the hub and the phone is the central controller, with everyday control staying on the LAN. The hub is **Home Assistant Container** (the single state authority) plus an **Eclipse Mosquitto** broker (the hub-internal MQTT bus); the devices are existing **Tuya** bulbs and switches, already paired in the Smart Life app, spoken to locally over Wi-Fi via the Tuya LAN protocol (TCP/6668, dps) through the **LocalTuya** integration. Today the hub side is an **architecture design plus a documentation corpus** — no compose manifests and no runnable hub deployment; the only code in the repo is the Flutter app under `app/` — a first hub client (a Home Assistant REST probe and snapshot, plus keystore token custody), with no hub deployment and no platform build. Two existing local projects are reused as components, unmodified: `tuya-local-key` (harvest and maintain Tuya local keys) and `tuya-bulb-widget` (an existing KDE Plasma desktop control surface). **Anti-goals:** no corporate-cloud control path, no new firmware and no re-pairing of devices, no runnable hub deployment and no Dart or Node backend (the phone app is a thin Home Assistant client, not a backend service), and the referenced repos are never modified by this one.
 
 ## Technology Stack
 
@@ -22,7 +22,7 @@ related: [project-overview]
 - **HA recorder SQLite** — history storage; no separate database is introduced.
 - **Docker Compose** — the hosting substrate: HA, Mosquitto, and `tuya-local-key` as services on the existing PC (HA uses `network_mode: host`).
 - **`tuya-local-key`** — a container that harvests and maintains Tuya local keys (occasional, cloud-touching).
-- **Flutter** — the planned phone app (design only): a thin Home Assistant REST + WebSocket client.
+- **Flutter** — the phone app under `app/`: a thin Home Assistant REST + WebSocket client. Increment 1 is in place (REST probe/snapshot plus keystore token custody); **FVM** 4.3.1 pins Flutter **3.47.7** (Dart 3.13.5) via `app/.fvmrc`.
 - **Pattern:** a single-authority hub with an internal MQTT bus; the app is a thin HA client. There is **no separate Node backend and no separate database**.
 
 ## Slices
@@ -55,6 +55,7 @@ daver-home-system/
 ├── tag-index.md                # generated: tag → docs surface (region `tags`)
 ├── validate.js                 # zero-dependency corpus validator (consumer-adapted copy)
 ├── adrs/                       # append-only decision records + adr-index hub
+├── app/                        # Flutter phone app — hub-client increment 1 (REST probe/snapshot + token custody)
 ├── docs/
 │   ├── project.md              # agent entry point — the nine fixed sections
 │   ├── context/                # strategic docs, one topic per file + context-index hub
@@ -62,7 +63,7 @@ daver-home-system/
 └── deploy/                     # PLANNED (not in the repo yet): compose manifests, mosquitto.conf, .env template
 ```
 
-`app/` (the Flutter phone app) is **planned and not written**; `deploy/` likewise holds only intended manifests today.
+`app/` (the Flutter phone app) holds increment 1 of the hub client — the Home Assistant REST probe/snapshot, keystore token custody, and the reactive status banner; **FVM** 4.3.1 pins Flutter **3.47.7** (Dart 3.13.5) in `app/.fvmrc` and the `android/` / `ios/` platform folders are generated (`fvm flutter analyze` clean, `fvm flutter test` green). `deploy/` likewise holds only intended manifests today.
 
 ## Key Conventions
 
@@ -102,7 +103,7 @@ Context docs (`docs/context/`):
 - [hosting-architecture](context/hosting-architecture.md) — the hub's layer model, containers, networking, and hosting substrate.
 - [home-assistant-hub](context/home-assistant-hub.md) — Home Assistant as authority: entities, LocalTuya, recorder, automations, backup.
 - [mqtt-topic-map](context/mqtt-topic-map.md) — the MQTT topic taxonomy and JSON payload contract for MQTT-native devices.
-- [mobile-app-design](context/mobile-app-design.md) — the planned Flutter app: HA REST + WebSocket client, token, reconnect.
+- [mobile-app-design](context/mobile-app-design.md) — the Flutter app (design + `app/` scaffold): HA REST + WebSocket client, token, reconnect.
 - [provisioning-flow](context/provisioning-flow.md) — end-to-end flow from a paired Tuya device to an HA entity.
 - [tuya-local-key-integration](context/tuya-local-key-integration.md) — the `tuya-local-key` component: harvesting, output fields, rotation.
 - [tuya-bulb-widget-integration](context/tuya-bulb-widget-integration.md) — the `tuya-bulb-widget` boundary: evidence, fallback surface, link-mirror semantics.
