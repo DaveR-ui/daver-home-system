@@ -33,6 +33,16 @@ class _FakeHubClient implements HubClient {
     }
     return states;
   }
+
+  @override
+  Future<EntitySnapshot> fetchEntity(String entityId) async {
+    for (final EntitySnapshot snapshot in states) {
+      if (snapshot.entityId == entityId) {
+        return snapshot;
+      }
+    }
+    throw const HubUnavailableException();
+  }
 }
 
 class _FakeTokenStore implements TokenStore {

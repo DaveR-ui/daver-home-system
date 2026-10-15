@@ -232,4 +232,70 @@ void main() {
       );
     });
   });
+
+  group('fetchEntity', () {
+    test('decodes one entity row and sends the bearer token', () async {
+      final _FakeHttpClient fake = _FakeHttpClient(
+        (_) async => _reply(
+          200,
+          jsonEncode(<String, Object?>{
+            'entity_id': 'light.kitchen',
+            'state': 'on',
+            'attributes': <String, Object?>{'brightness': 180},
+            'last_updated': '2026-10-14T10:00:00+00:00',
+          }),
+        ),
+      );
+
+      final EntitySnapshot snapshot =
+          await _client(fake).fetchEntity('light.kitchen');
+
+      final http.BaseRequest request = fake.requests.single;
+      expect(request.method, 'GET');
+      expect(request.url.path, '/api/states/light.kitchen');
+      expect(request.headers['Authorization'], 'Bearer tok');
+      expect(snapshot.entityId, 'light.kitchen');
+      expect(snapshot.state, 'on');
+      expect(snapshot.attributes, <String, dynamic>{'brightness': 180});
+      expect(snapshot.lastUpdated, DateTime.utc(2026, 10, 14, 10));
+    });
+
+    test('a missing last_updated and null attributes are tolerated', () async {
+      final _FakeHttpClient fake = _FakeHttpClient(
+        (_) async => _reply(
+          200,
+          jsonEncode(<String, Object?>{
+            'entity_id': 'sensor.temp',
+            'state': '21.5',
+            'attributes': null,
+          }),
+        ),
+      );
+
+      final EntitySnapshot snapshot =
+          await _client(fake).fetchEntity('sensor.temp');
+
+      expect(snapshot.attributes, isEmpty);
+      expect(snapshot.lastUpdated, isNull);
+    });
+
+    test('401 is TokenRejectedException', () async {
+      final _FakeHttpClient fake =
+          _FakeHttpClient((_) async => _reply(401, '{"message":"nope"}'));
+
+      expect(
+        _client(fake).fetchEntity('light.a'),
+        throwsA(isA<TokenRejectedException>()),
+      );
+    });
+
+    test('a non-object body is HubUnavailableException', () async {
+      final _FakeHttpClient fake = _FakeHttpClient((_) async => _reply(200, '[]'));
+
+      expect(
+        _client(fake).fetchEntity('light.a'),
+        throwsA(isA<HubUnavailableException>()),
+      );
+    });
+  });
 }

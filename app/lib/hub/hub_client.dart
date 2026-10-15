@@ -30,24 +30,45 @@ class DeviceOfflineException implements Exception {
   String toString() => message;
 }
 
+/// Linux errnos meaning the device itself has no route: ENETDOWN (100),
+/// ENETUNREACH (101), EHOSTUNREACH (113). A no-route errno is what separates the
+/// `offline` status (the phone has no usable network) from `hubUnavailable`
+/// (the network is up and the hub is not). Shared by both client implementations
+/// so the rule stays in one place.
+const Set<int> noDeviceRouteErrnos = <int>{100, 101, 113};
+
 /// One entity row of the `GET /api/states` snapshot, cached for rendering only.
 class EntitySnapshot {
   const EntitySnapshot({
     required this.entityId,
     required this.state,
     required this.attributes,
+    this.lastUpdated,
   });
 
   final String entityId;
   final String state;
   final Map<String, dynamic> attributes;
 
+  /// HA's `last_updated` (UTC). Used ONLY to order render-cache updates, so a
+  /// duplicate or out-of-order event cannot overwrite a newer render. Null when
+  /// HA omits it.
+  final DateTime? lastUpdated;
+
   factory EntitySnapshot.fromJson(Map<String, dynamic> json) => EntitySnapshot(
         entityId: json['entity_id'] as String,
         state: json['state'] as String,
         attributes:
             (json['attributes'] as Map?)?.cast<String, dynamic>() ?? const {},
+        lastUpdated: _parseTimestamp(json['last_updated']),
       );
+
+  static DateTime? _parseTimestamp(Object? value) {
+    if (value is! String) {
+      return null;
+    }
+    return DateTime.tryParse(value)?.toUtc();
+  }
 }
 
 /// The app's port over Home Assistant's REST surface. Fake-able in tests.
@@ -57,4 +78,8 @@ abstract class HubClient {
 
   /// `GET /api/states`. The full entity snapshot.
   Future<List<EntitySnapshot>> fetchStates();
+
+  /// `GET /api/states/<entity_id>` — one entity row, used to close the gap
+  /// after a WebSocket reconnect.
+  Future<EntitySnapshot> fetchEntity(String entityId);
 }

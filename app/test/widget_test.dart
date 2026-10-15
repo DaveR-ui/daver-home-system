@@ -13,6 +13,10 @@ class _ReachableHub implements HubClient {
 
   @override
   Future<List<EntitySnapshot>> fetchStates() async => const <EntitySnapshot>[];
+
+  @override
+  Future<EntitySnapshot> fetchEntity(String entityId) async =>
+      throw const HubUnavailableException();
 }
 
 class _MemoryTokenStore implements TokenStore {

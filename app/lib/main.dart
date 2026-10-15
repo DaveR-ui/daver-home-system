@@ -6,8 +6,10 @@ import 'package:http/http.dart' as http;
 import 'hub/hub_client.dart';
 import 'hub/hub_status_controller.dart';
 import 'hub/http_hub_client.dart';
+import 'hub/live_state_client.dart';
 import 'hub/secure_token_store.dart';
 import 'hub/token_store.dart';
+import 'hub/ws_live_state_client.dart';
 import 'hub_status.dart';
 import 'ui/hub_banner.dart';
 import 'ui/token_entry.dart';
@@ -16,13 +18,18 @@ void main() => runApp(const DaverApp());
 
 /// The root of the daver-home phone app.
 ///
-/// [hubClient] and [tokenStore] are test seams; when null the production
-/// HTTP client and OS keystore are used.
+/// [hubClient], [tokenStore], and [liveStateClient] are test seams; when null
+/// the production HTTP/WebSocket clients and the OS keystore are used.
 class DaverApp extends StatelessWidget {
-  const DaverApp({super.key, this.hubClient, this.tokenStore});
+  const DaverApp({super.key, this.hubClient, this.tokenStore, this.liveStateClient});
 
   final HubClient? hubClient;
   final TokenStore? tokenStore;
+
+  /// Test seam. Inject [hubClient] and [liveStateClient] together in tests:
+  /// injecting only the live seam falls back to the production REST client and
+  /// the OS keystore.
+  final LiveStateClient? liveStateClient;
 
   @override
   Widget build(BuildContext context) {
@@ -32,7 +39,11 @@ class DaverApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
         useMaterial3: true,
       ),
-      home: HomeScreen(hubClient: hubClient, tokenStore: tokenStore),
+      home: HomeScreen(
+        hubClient: hubClient,
+        tokenStore: tokenStore,
+        liveStateClient: liveStateClient,
+      ),
       debugShowCheckedModeBanner: false,
     );
   }
@@ -40,10 +51,20 @@ class DaverApp extends StatelessWidget {
 
 /// The first screen: a stand-in for the rooms/devices list.
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key, this.hubClient, this.tokenStore});
+  const HomeScreen({
+    super.key,
+    this.hubClient,
+    this.tokenStore,
+    this.liveStateClient,
+  });
 
   final HubClient? hubClient;
   final TokenStore? tokenStore;
+
+  /// Test seam. Inject [hubClient] and [liveStateClient] together in tests:
+  /// injecting only the live seam falls back to the production REST client and
+  /// the OS keystore.
+  final LiveStateClient? liveStateClient;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -55,12 +76,23 @@ class _HomeScreenState extends State<HomeScreen> {
   /// Only set when this screen created the HTTP client, so it closes it.
   http.Client? _ownedHttpClient;
 
+  /// Only set when this screen created the WebSocket client, so it stops it.
+  LiveStateClient? _ownedLiveState;
+
   @override
   void initState() {
     super.initState();
     final TokenStore tokens = widget.tokenStore ?? SecureTokenStore();
     final HubClient client = widget.hubClient ?? _productionClient(tokens);
-    _controller = HubStatusController(client: client, tokens: tokens);
+    // With an injected hub client but no live client, pass no live state so the
+    // increment-1 test widgets keep their REST-only behaviour.
+    final LiveStateClient? live = widget.liveStateClient ??
+        (widget.hubClient == null ? _productionLiveState(tokens, client) : null);
+    _controller = HubStatusController(
+      client: client,
+      tokens: tokens,
+      liveState: live,
+    );
     _controller.connect();
   }
 
@@ -73,9 +105,20 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  LiveStateClient _productionLiveState(TokenStore tokens, HubClient client) {
+    final WsLiveStateClient live = WsLiveStateClient(
+      baseUrl: defaultHubBaseUrl,
+      tokenReader: tokens.readToken,
+      hubClient: client,
+    );
+    _ownedLiveState = live;
+    return live;
+  }
+
   @override
   void dispose() {
     _controller.dispose();
+    unawaited(_ownedLiveState?.stop());
     _ownedHttpClient?.close();
     super.dispose();
   }

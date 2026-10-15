@@ -13,10 +13,6 @@ const String defaultHubBaseUrl = 'http://homeassistant.local:8123';
 /// Upper bound per request so a silent hub cannot leave the banner spinning.
 const Duration _requestTimeout = Duration(seconds: 10);
 
-/// Linux errnos meaning the device itself has no route: ENETDOWN (100),
-/// ENETUNREACH (101), EHOSTUNREACH (113).
-const Set<int> _noDeviceRouteErrnos = <int>{100, 101, 113};
-
 /// The REST implementation of [HubClient] over `package:http`.
 ///
 /// The [http.Client] and the token reader are injected so tests never touch
@@ -64,6 +60,24 @@ final class HttpHubClient implements HubClient {
     }
   }
 
+  @override
+  Future<EntitySnapshot> fetchEntity(String entityId) async {
+    final http.Response response = await _get('/api/states/$entityId');
+    final Object? decoded = _decodeJson(response.body);
+    if (decoded is! Map<String, dynamic>) {
+      throw const HubUnavailableException(
+        'Home Assistant returned an unexpected state payload.',
+      );
+    }
+    try {
+      return EntitySnapshot.fromJson(decoded);
+    } on Object {
+      throw const HubUnavailableException(
+        'Home Assistant returned an unexpected state payload.',
+      );
+    }
+  }
+
   /// Performs an authenticated GET and maps every failure onto the two typed
   /// exceptions, so no transport type escapes this class.
   Future<http.Response> _get(String path) async {
@@ -103,7 +117,7 @@ final class HttpHubClient implements HubClient {
   /// or a DNS failure means the network is up and the hub is not: `hubUnavailable`.
   static Exception _mapSocketException(SocketException e) {
     final int? errno = e.osError?.errorCode;
-    if (errno != null && _noDeviceRouteErrnos.contains(errno)) {
+    if (errno != null && noDeviceRouteErrnos.contains(errno)) {
       return const DeviceOfflineException();
     }
     return const HubUnavailableException('Home Assistant is unreachable.');
