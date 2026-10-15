@@ -68,6 +68,15 @@ void main() {
       expect(request.headers['Accept'], 'application/json');
     });
 
+    test('204 is a successful probe', () async {
+      // Any 2xx is a success: HA's read answers 200, but a 204 acceptance must
+      // not be reported as a failure — both clients share this one rule.
+      final _FakeHttpClient fake =
+          _FakeHttpClient((_) async => _reply(204, ''));
+
+      expect(await _client(fake).probeHub(), isTrue);
+    });
+
     for (final int status in <int>[401, 403]) {
       test('$status means the token was rejected: TokenRejectedException',
           () async {

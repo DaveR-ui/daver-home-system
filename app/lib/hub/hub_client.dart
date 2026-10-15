@@ -37,6 +37,24 @@ class DeviceOfflineException implements Exception {
 /// so the rule stays in one place.
 const Set<int> noDeviceRouteErrnos = <int>{100, 101, 113};
 
+/// Throws the typed exception for an HTTP status that is not a success.
+///
+/// Both REST clients share this one rule so they can never drift apart again:
+/// **any 2xx is a success** — Home Assistant answers `200` for reads and for
+/// service calls, and a `204 No Content` is an equally valid acceptance, so
+/// rejecting a non-200 success would turn a working hub into a false failure.
+/// `401`/`403` mean the stored token was rejected; every other status is an
+/// unavailable hub.
+void throwForHubStatus(int statusCode) {
+  if (statusCode >= 200 && statusCode < 300) {
+    return;
+  }
+  if (statusCode == 401 || statusCode == 403) {
+    throw const TokenRejectedException();
+  }
+  throw HubUnavailableException('Home Assistant answered HTTP $statusCode.');
+}
+
 /// One entity row of the `GET /api/states` snapshot, cached for rendering only.
 class EntitySnapshot {
   const EntitySnapshot({

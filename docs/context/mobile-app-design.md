@@ -3,7 +3,7 @@ last_updated: 2026-10-15
 status: active
 description: Phone-as-controller app — a thin Home Assistant client over REST plus WebSocket, its screens, token custody, discovery, and offline semantics.
 tags: [app, mobile, flutter, rest, websocket, ha-api, design]
-version: 1.4
+version: 1.6
 related: [home-assistant-hub, security-and-privacy, provisioning-flow, hosting-architecture]
 ---
 
@@ -15,7 +15,7 @@ The phone is the ecosystem's central controller, but the devices do not talk to 
 
 ## Solution
 
-The app is a **Home Assistant client**: REST for commands and the initial snapshot, WebSocket for live state. It is not an MQTT client and not a device-level client. Currently the design plus increments 1 and 2 in `app/`: the HTTP client is in place (it probes the hub at `GET /api/`, caches the `GET /api/states` snapshot, and keeps the long-lived token in the OS keystore), and live state arrives over the WebSocket (`state_changed` into a render cache, with reconnect and a re-read of the tracked entities). The remaining dependency is `nsd`/mDNS discovery — **no `mqtt_client`**.
+The app is a **Home Assistant client**: REST for commands and the initial snapshot, WebSocket for live state. It is not an MQTT client and not a device-level client. Currently the design plus increments 1, 2, and 4 in `app/`: the HTTP client is in place (it probes the hub at `GET /api/`, caches the `GET /api/states` snapshot, and keeps the long-lived token in the OS keystore), and live state arrives over the WebSocket (`state_changed` into a render cache, with reconnect and a re-read of the tracked entities). The remaining dependency is `nsd`/mDNS discovery (increment 3, deferred) — **no `mqtt_client`**.
 
 ### Surface
 
@@ -76,14 +76,22 @@ Every request carries `Authorization: Bearer <long-lived-access-token>`.
 | `app/lib/hub_status.dart` | `HubStatus` = `connecting` / `hubUnavailable` / `offline` |
 | `app/lib/hub/hub_client.dart` | The `HubClient` port over the HA REST surface — probe, snapshot, and `fetchEntity` for the reconnect re-read — plus `EntitySnapshot`, and the typed exceptions |
 | `app/lib/hub/http_hub_client.dart` | `GET /api/` probe, `GET /api/states` snapshot, and `GET /api/states/<entity_id>` re-read, each with `Authorization: Bearer <token>`; maps every failure onto the typed exceptions |
+| `app/lib/hub/hub_rest_transport.dart` | Increment 4: the shared REST transport both HTTP clients sit on — bearer-token read, request build, per-request timeout, and the mapping of every failure onto the typed exceptions |
 | `app/lib/hub/live_state_client.dart` | The `LiveStateClient` port over the HA WebSocket surface: an events stream, a status stream, `setTrackedEntities`, `start`, and `stop` |
 | `app/lib/hub/ws_live_state_client.dart` | The `LiveStateClient` implementation over `web_socket_channel` to `ws(s)://<host>:8123/api/websocket`; injected channel factory / delay / jitter seams keep every test fake-based |
 | `app/lib/hub/token_store.dart` | The `TokenStore` port for token custody |
 | `app/lib/hub/secure_token_store.dart` | OS-keystore custody via `flutter_secure_storage` (Android encrypted prefs) |
-| `app/lib/hub/hub_status_controller.dart` | Reactive status: null = connected; `offline` vs `hubUnavailable`; `needsToken` on a missing or rejected token |
+| `app/lib/hub/hub_status_controller.dart` | Reactive status: null = connected; `offline` vs `hubUnavailable`; `needsToken` on a missing or rejected token; increment 4 adds the light-command write path (`sendLightCommand`: optimistic-when-accepted, refuse-not-queue, a per-entity in-flight guard so a second command is `busy`, and a 5-second confirmation timeout that falls back to a render-only re-read) |
+| `app/lib/hub/light_command.dart` | Increment 4: `LightService` + `LightCommand` — the light-command model |
+| `app/lib/hub/light_command_client.dart` | Increment 4: the `LightCommandClient` write port over HA's light services |
+| `app/lib/hub/http_light_command_client.dart` | Increment 4: `POST /api/services/light/*` implementation with the shared token/error mapping |
+| `app/lib/surfaces/light_entity.dart` | Increment 4: pure-Dart `LightEntity` / `RoomSection` parsing + grouping for the surfaces (render-only) |
 | `app/lib/ui/hub_banner.dart` | `HubBanner`, the reactive status banner the owner calls the "cartel" |
 | `app/lib/ui/token_entry.dart` | Token entry / re-auth surface |
-| `app/test/` | `widget_test.dart` (title + banner render) plus the `test/hub/` and `test/ui/` suites — 57 fake-based cases; no test touches the real hub, the network, or the OS keystore |
+| `app/lib/ui/rooms_devices_screen.dart` | Increment 4: grouped rooms/devices list + hub-health card kept to the connected affirmation only (render-only) |
+| `app/lib/ui/bulb_detail_screen.dart` | Increment 4: bulb detail — on/off/toggle, brightness, colour presets (the only write surface) |
+| `app/lib/ui/switch_mirror_screen.dart` | Increment 4: switch-mirror status — status only, no write path |
+| `app/test/` | `widget_test.dart` (title + banner render) plus the `test/hub/`, `test/surfaces/`, and `test/ui/` suites — 126 fake-based cases (32 increment 1, 25 increment 2, 54 increment 4, 15 review fixes); no test touches the real hub, the network, or the OS keystore |
 | `app/android/`, `app/ios/` | Platform folders generated by `fvm flutter create . --platforms=android,ios` |
 | `app/.gitignore` | Keeps `.dart_tool/`, build output, and `.fvm/` out of the repo |
 
@@ -91,7 +99,7 @@ Every request carries `Authorization: Bearer <long-lived-access-token>`.
 
 ### First screen
 
-The first screen is a `Scaffold` with an app bar titled `Daver Home`, a short line naming the surface, and a **reactive** `HubBanner` driven by `HubStatusController`. The banner is hidden when connected and otherwise shows `connecting`, `hubUnavailable`, or `offline`. When no token is stored — or the hub rejects the stored one (HTTP 401/403) — the screen surfaces a token entry / re-auth field. It does not render entities yet.
+The first screen is a `Scaffold` with an app bar titled `Daver Home`, a short line naming the surface, and a **reactive** `HubBanner` driven by `HubStatusController`. The banner is hidden when connected and otherwise shows `connecting`, `hubUnavailable`, or `offline`. When no token is stored — or the hub rejects the stored one (HTTP 401/403) — the screen surfaces a token entry / re-auth field. `HomeScreen` now renders the rooms/devices list below that header — the grouped bulbs and switches from the render cache — with the banner and the hub-health row reporting reachability.
 
 The banner is the seam the hub client lands on: the same enum drives label, colour, and icon from the real `GET /api/` probe — exactly the "hub unavailable" rule stated in the reconnect section above.
 
@@ -99,23 +107,25 @@ The banner is the seam the hub client lands on: the same enum drives label, colo
 
 1. **Hub client** (done) — `GET /api/` probe plus `GET /api/states` snapshot and token custody in the OS keystore via `http` and `flutter_secure_storage`; see `### Implementation plan`.
 2. **Live state** (done) — `web_socket_channel` to `ws://<host>:8123/api/websocket`: `auth` → `auth_ok` → `subscribe_events`, with reconnect, exponential backoff, resubscribe, and a re-read of the affected entities; see `### Implementation plan`.
-3. **Discovery** — mDNS via the platform API, with a static saved host as fallback.
-4. **Surfaces** — rooms/devices list, bulb detail, switch-mirror status, and hub health.
+3. **Discovery** — mDNS via the platform API, with a static saved host as fallback. **(deferred)**
+4. **Surfaces** (done) — rooms/devices list, bulb detail, switch-mirror status, and hub health.
 
 Still **no `mqtt_client`**.
 
 ### Implementation plan
 
-Order, gates, packages, toolchain, and test shape for the increments listed in `### Next increments` above. **Increments 1 and 2 are done** (their gates are met); 3–4 stay gated.
+Order, gates, packages, toolchain, and test shape for the increments listed in `### Next increments` above. **Increments 1, 2, and 4 are done**; increment 3 (Discovery) is deferred.
 
 | # | Increment | Scope | Gate to start |
 |---|---|---|---|
 | 1 | **Hub client** (done) | `GET /api/` availability probe + `GET /api/states` snapshot, both with `Authorization: Bearer <token>`; token in the OS keystore via `flutter_secure_storage`; reactive `HubBanner` | — (first) |
 | 2 | **Live state** (done) | `web_socket_channel` to `ws://<host>:8123/api/websocket`: `auth` → `auth_ok` → `subscribe_events`; reconnect with exponential backoff, resubscribe, re-read affected entities | increment 1 green |
 | 3 | **Discovery** | mDNS via the platform API; static saved host as fallback | increment 2 green |
-| 4 | **Surfaces** | Rooms/devices list, bulb detail, switch-mirror status, hub health | increment 3 green |
+| 4 | **Surfaces** (done) | Rooms/devices list, bulb detail, switch-mirror status, hub health | increment 3 green — started without it, by owner decision |
 
 Gate: the current increment merged, `fvm flutter test` green from `app/`, and its hub-facing code behind a port covered by fakes. Because **no test talks to the real hub**, behaviour against a live HA is confirmed by the human on-device, not in CI.
+
+**Gate deviation (increment 4).** Increment 4 was started **without** its documented gate (`increment 3 green`) — by the owner's explicit decision. With increment 2 (live state) already green, the owner redirected from Discovery to Surfaces, so increment 3 (mDNS) is deferred and the **static host fallback** (`defaultHubBaseUrl = http://homeassistant.local:8123`) remains the interim addressing: there is **no mDNS** yet. This deviation is recorded here truthfully, not back-dated.
 
 **Increment 1 — hub client.** The probe (`GET /api/`) and the snapshot (`GET /api/states`) each carry `Authorization: Bearer <token>`. The long-lived token persists in the **OS keystore** (Android Keystore / iOS Keychain) via `flutter_secure_storage`; it is never bundled and never written to a config file. `HubBanner` becomes **reactive** — it renders `HubStatus` from the probe/connection state instead of the hard-coded `hubUnavailable` of the first screen:
 
@@ -132,6 +142,10 @@ The enum keeps its three values; success is the absence of a status, so a hidden
 
 **Status (increment 2).** Implemented: the `LiveStateClient` port and its `web_socket_channel` implementation live in `app/lib/hub/live_state_client.dart` and `app/lib/hub/ws_live_state_client.dart`, behind the port pattern of increment 1 and covered by fakes. The documented sequence runs exactly: connect → `auth_required` → `{"type":"auth","access_token":…}` → `auth_ok` → `{"id":<n>,"type":"subscribe_events","event_type":"state_changed"}` (id increments from 1) → apply events; `result`/`pong` acks are ignored and malformed frames are dropped, never thrown. `state_changed` updates a **render cache only** — per [[adr-0005-control-plane-authority]] Home Assistant stays the single state authority and the cache is never a decision input. Reconnect uses exponential backoff — base **1s**, factor **2**, cap **30s**, ±**20%** jitter — accumulating across reconnects and resetting once a live event proves flow; on close it re-authenticates, resubscribes, then re-reads the tracked entities via `GET /api/states/<entity_id>` (the new `HubClient.fetchEntity`) to close the disconnect gap. Edge cases: `auth_invalid` or a revoked token → re-auth state (`needsToken`), never a crash loop; device-offline errno (ENETDOWN/ENETUNREACH/EHOSTUNREACH) → `HubStatus.offline`; duplicate and out-of-order events are dropped by a `last_updated` ordering guard. Live status composes with increment 1's probe-first `HubStatusController`, so `HubBanner` stays coherent (connecting/reconnecting → `connecting`, offline → `offline`, token rejected → re-auth prompt, connected → banner hidden) and the `HubStatus` enum keeps its three values. `fvm flutter analyze` is clean and all 57 `fvm flutter test` cases are green — 32 from increment 1 plus 25 new — all fakes, with no test touching the real hub, the network, or the OS keystore. Live behaviour against a real Home Assistant is still confirmed by the human on-device — never in CI.
 
+**Status (increment 4).** Implemented: the control surfaces and the light-command write path. `LightCommand`/`LightService` (the command model) plus the `LightCommandClient` **port** and its `HttpLightCommandClient` implementation post `POST /api/services/light/{turn_on|turn_off|toggle}` with `{"entity_id": …}` (+ `brightness` / `rgb_color` when set), reusing the same token/error mapping as `HubClient` and mirroring the `HubClient` / `LiveStateClient` port pattern. `HubStatusController.sendLightCommand` gates the write path: when the hub is not connected it returns `refused` and **sends nothing — a command is never silently queued** while the authority is down (ADR-0005); once accepted the write is applied optimistically with the row kept **undated** (`lastUpdated: null`) so the authoritative `state_changed` always wins the ordering guard, and only **one command per entity is ever in flight**: a second command for an entity that is already pending is **refused** (`busy`, never queued) and the bulb detail controls stay disabled while a command is unconfirmed. The accepted command's `brightness`/`rgb_color` are **merged** onto the entity's cached attributes, so a `turn_off` does not wipe the cached brightness/colour and a brightness-only `turn_on` keeps the colour. Confirmation is the next live `state_changed` — or, with no live client, or once the **5-second confirmation timeout** expires, a render-only re-read — so a no-op command that HA accepts but never announces cannot leave the pending indicator spinning. The surfaces are `rooms_devices_screen.dart` (grouped `light.*` / `switch.*` from the render cache, plus a hub-health card that now shows only the connected affirmation — the always-on `HubBanner` directly above the list already owns the connecting / hub-unavailable / phone-offline copy), `bulb_detail_screen.dart` (on/off/toggle, brightness slider, colour presets, disabled and refusing when the hub is down — the only write surface), and `switch_mirror_screen.dart` — **status only, no write path** to the bulbs its automation drives. Because `GET /api/states` exposes no automation→entity edges, the switch→bulbs link is modelled by **room-prefix convention** (`switch.<room>` ↔ `light.<room>_*`), a documented rendering assumption. Home Assistant remains the single state authority and the entity cache stays render-only. `fvm flutter analyze` is clean and `fvm flutter test` is green; see `### Test shape`. Live behaviour against a real Home Assistant is still confirmed by the human on-device — never in CI.
+
+**Packages (increment 4).** None — increment 4 adds no dependency; it reuses `http` and `web_socket_channel`. Still **no `mqtt_client`**.
+
 **Packages (increment 1).** `http` (REST, resolved **1.6.0**) and `flutter_secure_storage` (token custody, resolved **9.2.4**) are declared in `app/pubspec.yaml`, with the resolved versions recorded in `pubspec.lock` by `fvm flutter pub get` — never hand-written into this plan. Dart 3.13.5 satisfies the `^3.6.0` SDK constraint.
 
 **Packages (increment 2).** `web_socket_channel` (live state) is declared in `app/pubspec.yaml` and resolved to **3.0.3** in `pubspec.lock` by `fvm flutter pub get` — never hand-written into this plan. Dart 3.13.5 satisfies the package's `^3.6.0` SDK constraint.
@@ -144,9 +158,9 @@ Pin procedure, in order:
 2. `fvm flutter create .` in `app/` adds the `android/` / `ios/` platform folders (already generated here).
 3. From `app/` only: `fvm flutter pub get`, `fvm flutter analyze`, `fvm flutter test` — never a bare `flutter`, never from the repo root.
 
-Done for 3.47.7: `fvm flutter pub get` succeeds, `fvm flutter analyze` reports "No issues found!", and `fvm flutter test` runs 57 cases, all green.
+Done for 3.47.7: `fvm flutter pub get` succeeds, `fvm flutter analyze` reports "No issues found!", and `fvm flutter test` runs **126 cases**, all green.
 
-**Test shape.** `flutter_test` widget tests for `HubBanner` across every `HubStatus` value; unit tests for the hub client against an injected fake HTTP client (no real network), including the four `fetchEntity` HTTP cases; a fake WebSocket channel behind an injected factory — with injected delay and jitter — driving the `LiveStateClient` through a live-controller suite that covers socket lifecycle, backoff, and re-read, plus status mapping and dedupe, with added cases for a token rejected on the reconnect re-read, mixed re-read recovery, backoff reset pinning, and the backoff overflow regression; and a fake keystore behind the storage port for token custody. These suites now exist under `app/test/`: `test/ui/hub_banner_test.dart`, `test/hub/` (client, live-state client, live controller, status controller, secure store), and `test/widget_test.dart` (title + banner render) — **57 cases in total** (32 from increment 1 plus 25 new). **No test ever talks to the real hub** — the hub is a fake in every test. Run with `fvm flutter test` from `app/`.
+**Test shape.** `flutter_test` widget tests for `HubBanner` across every `HubStatus` value; unit tests for the hub client against an injected fake HTTP client (no real network), including the four `fetchEntity` HTTP cases; a fake WebSocket channel behind an injected factory — with injected delay and jitter — driving the `LiveStateClient` through a live-controller suite that covers socket lifecycle, backoff, and re-read, plus status mapping and dedupe, with added cases for a token rejected on the reconnect re-read, mixed re-read recovery, backoff reset pinning, and the backoff overflow regression; and a fake keystore behind the storage port for token custody. These suites now exist under `app/test/`: `test/ui/hub_banner_test.dart`, `test/hub/` (client, live-state client, live controller, status controller, secure store, light-command client, controller command state), `test/surfaces/light_entity_test.dart`, `test/ui/{rooms_devices,bulb_detail,switch_mirror}_test.dart`, and `test/widget_test.dart` (title + banner render) — **126 cases in total** (32 from increment 1, 25 from increment 2, 54 from increment 4, and 15 added by the increment-4 review fixes: optimistic-merge, per-command concurrency, confirmation timeout, hub-copy de-duplication, and shared REST transport). **No test ever talks to the real hub** — the hub is a fake in every test, and no command test touches the network or the OS keystore. Run with `fvm flutter test` from `app/`.
 
 **Guardrails (unchanged).** No `mqtt_client`. No `tinytuya`. No direct TCP/6668. No Tuya cloud. No device-pairing UI. Home Assistant stays the single state authority ([[adr-0005-control-plane-authority]]); the app holds a cache for rendering only, never for decisions — see `### Deliberate non-goals` below.
 
