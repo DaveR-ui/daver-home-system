@@ -23,6 +23,16 @@ Description=Daver home hub (docker compose stack)
 After=docker.service network-online.target
 Requires=docker.service
 Wants=network-online.target
+# The repository — and therefore the compose file and the whole config volume —
+# lives on the mounted data disk, not on the root filesystem. Without this
+# dependency the unit can start before the disk is mounted: `docker compose`
+# would then find no compose file (or a stale one) and the hub would come up
+# half-configured. Requiring the mount means the unit simply does not start
+# while the disk is absent, which is the right trade: a hub that is down is
+# visible, a hub that is running against the wrong config is not.
+# The path is the data volume on this machine; adjust it if the disk is
+# mounted somewhere else.
+RequiresMountsFor=/run/media/admin/Datos
 
 [Service]
 Type=oneshot
