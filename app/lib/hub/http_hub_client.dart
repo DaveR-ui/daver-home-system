@@ -6,8 +6,12 @@ import 'hub_client.dart';
 import 'hub_rest_transport.dart';
 
 /// Static fallback host for the hub, per the design doc. mDNS discovery
-/// supersedes this in increment 3.
-const String defaultHubBaseUrl = 'http://homeassistant.local:8123';
+/// supersedes this in increment 3; a build may override it with
+/// `--dart-define=HUB_BASE_URL=…` (a device/demo address).
+const String defaultHubBaseUrl = String.fromEnvironment(
+  'HUB_BASE_URL',
+  defaultValue: 'http://homeassistant.local:8123',
+);
 
 /// The REST implementation of [HubClient] over `package:http`.
 ///
