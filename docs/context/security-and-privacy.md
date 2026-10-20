@@ -1,9 +1,9 @@
 ---
-last_updated: 2026-10-14
+last_updated: 2026-10-20
 status: active
 description: The LAN-only trust boundary — exposed ports, token/key custody, the plain-HTTP caveat, the three cloud-touching moments, and the backup policy.
 tags: [security, privacy, lan, trust-boundary, tokens, backup]
-version: 1.0
+version: 1.1
 related: [hosting-architecture, home-assistant-hub, tuya-local-key-integration, mobile-app-design]
 ---
 
@@ -60,6 +60,22 @@ Control, state, automations, app traffic, and MQTT stay on the LAN.
 | Mosquitto config | Broker config and authorised users |
 | The compose file | Whole-stack topology |
 | tuya-local-key data directory | **Only if the backup medium is itself protected** — it holds the keys' cache and the cache key; otherwise skip it and re-harvest on restore |
+
+**The archive is a secret.** The backup that `deploy/scripts/backup.sh` writes
+includes `.storage/` — the owner account, the long-lived access tokens and the
+**LocalTuya local keys** — so anyone holding the tarball can drive the owner's
+bulbs. It therefore: is written `0600`; refuses to be written inside the
+repository; and must live on a **mounted volume the owner trusts** (ideally an
+encrypted volume, and ideally not the same physical device as the source disk —
+a backup next to the thing it backs up protects nothing). The scheduled unit
+(`daver-backup.timer`) enforces the first half of that: it refuses to run
+unless the destination is a mount point of its own, so a mistyped path cannot
+quietly fill the root filesystem. The recorder database is deliberately **not**
+in the archive (it is written while Home Assistant runs and would be torn); it
+is history, and the hub rebuilds it.
+
+The archives are never deleted by the script: one per night grows without
+bound, so the owner prunes them on their own schedule.
 
 ### Device-internet policy (documented default)
 

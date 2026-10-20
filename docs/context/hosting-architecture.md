@@ -3,7 +3,7 @@ last_updated: 2026-10-20
 status: active
 description: Where the Daver home system runs - layer model, component inventory, hosting topology, stack rationale, and the topology risk register.
 tags: [architecture, hosting, docker, topology, risk]
-version: 1.3
+version: 1.4
 related: [home-assistant-hub, mqtt-topic-map, project-overview]
 ---
 
@@ -114,6 +114,22 @@ behaviour with nobody deciding it. The pin freezes the version; moving it is a
 deliberate act, and `[[bring-up-the-hub]]` carries the bump procedure. The
 readable tag stays next to each pin so a human can tell what is pinned.
 
+**The backup is scheduled, not remembered.** `deploy/scripts/backup.sh` writes
+one 0600 archive of the hub's configuration, and
+`deploy/systemd/daver-backup.timer` runs it daily at 03:30 — catching up after
+a downtime rather than silently skipping a night. The destination must be a
+**mounted volume**, ideally on a different physical device than the source disk:
+the archive carries the owner account, the access tokens and the LocalTuya
+local keys, so a copy next to the thing it backs up protects nothing, and the
+unit refuses to run against a plain directory. The script never deletes
+anything, so the archives are pruned on the owner's own schedule.
+
+**Images are pinned by digest, never by tag.** A tag moves under you — `stable` is
+a rolling tag — and a silent upgrade of Home Assistant changes the hub's
+behaviour with nobody deciding it. The pin freezes the version; moving it is a
+deliberate act, and `[[bring-up-the-hub]]` carries the bump procedure. The
+readable tag stays next to each pin so a human can tell what is pinned.
+
 ### State ownership and data flow
 
 | Fact | Owner | Direction |
@@ -150,7 +166,7 @@ Down behaviour:
 
 | Risk | Impact | Mitigation | Detail |
 | --- | --- | --- | --- |
-| No Supervisor, so no built-in HA snapshots | Unrecoverable config loss | Scripted backups of the HA config volume, mosquitto config, and the compose file | [[home-assistant-hub]] |
+| No Supervisor, so no built-in HA snapshots | Unrecoverable config loss | Scripted backups of the HA config volume, mosquitto config, and the compose file — scheduled daily by a systemd timer | [[home-assistant-hub]] |
 | Docker bridge NAT breaks device discovery | Devices unreachable | `network_mode: host` for Home Assistant | this doc |
 | DHCP drift breaks LocalTuya IP mappings | A device silently unreachable | Static DHCP leases per device MAC | this doc |
 | Desktop suspend kills the always-on server; 8123/1883 can collide with other work on the PC | Hub offline, port conflicts | Treat the PC as a server; disable suspend or accept downtime; review listening ports | this doc |
