@@ -124,6 +124,12 @@ local keys, so a copy next to the thing it backs up protects nothing, and the
 unit refuses to run against a plain directory. The script never deletes
 anything, so the archives are pruned on the owner's own schedule.
 
+**Images are pinned by digest, never by tag.** A tag moves under you — `stable` is
+a rolling tag — and a silent upgrade of Home Assistant changes the hub's
+behaviour with nobody deciding it. The pin freezes the version; moving it is a
+deliberate act, and `[[bring-up-the-hub]]` carries the bump procedure. The
+readable tag stays next to each pin so a human can tell what is pinned.
+
 ### State ownership and data flow
 
 | Fact | Owner | Direction |
