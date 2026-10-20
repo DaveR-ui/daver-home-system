@@ -4,7 +4,7 @@ category: protocols
 tags: [protocol, hosting, docker, compose, systemd, backup]
 aliases: ["Bring Up the Hub"]
 related: [adr-0004-hosting-substrate, hosting-architecture, home-assistant-hub, add-a-tuya-device]
-version: 1.3
+version: 1.4
 status: active
 ---
 
@@ -67,6 +67,14 @@ Ordered, checkable steps:
    `network-online.target`, brings the stack up, retries on failure, and takes it
    down on stop. The repository ships it; installing and enabling it on the host
    is the owner's decision.
+
+   It also **requires the data disk to be mounted** (`RequiresMountsFor=` on the
+   volume that holds the repository): the compose file and the whole Home
+   Assistant config volume live there, so starting before the mount would find
+   no compose file and come up half-configured. With the dependency, **the unit
+   does not start while the disk is absent** — deliberately: a hub that is down
+   is visible, a hub running against the wrong config is not. Adjust the path in
+   the unit if the disk is mounted elsewhere.
 5. **First checks.**
    - Home Assistant answers on **8123**.
    - Mosquitto is listening on **1883**.
@@ -173,6 +181,10 @@ curl -s  http://127.0.0.1:8000/              # tuya-local-key (loopback)
   `.storage/`. A restore without it hands back a hub nobody can log into.
 - **Backing up the recorder database while Home Assistant runs.** The copy is
   torn; it is history, and the hub rebuilds it.
+- **Ignoring that the repository lives on a mounted disk.** A unit without the
+  mount dependency can start before the disk is mounted and bring the stack up
+  against no compose file; with it, the unit simply stays down until the disk
+  is there.
 
 ## References
 

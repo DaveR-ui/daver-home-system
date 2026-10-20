@@ -3,7 +3,7 @@ last_updated: 2026-10-20
 status: active
 description: Where the Daver home system runs - layer model, component inventory, hosting topology, stack rationale, and the topology risk register.
 tags: [architecture, hosting, docker, topology, risk]
-version: 1.2
+version: 1.3
 related: [home-assistant-hub, mqtt-topic-map, project-overview]
 ---
 
@@ -56,6 +56,16 @@ flowchart TB
 ### Hosting topology
 
 All three services run under one Compose project on the PC, started by a systemd unit that wraps `docker compose up -d`; every service carries `restart: unless-stopped`, so the stack comes back after a reboot or container crash.
+
+The unit **requires the volume that holds the repository to be mounted**
+(`RequiresMountsFor=`): the compose file and the whole Home Assistant config
+volume live there, so a cold boot that starts the unit before the disk is
+mounted would find no compose file and bring the stack up against the wrong
+config. With the dependency the unit simply does not start while the disk is
+absent — a hub that is down is visible, a hub running against the wrong config
+is not. That is also why the data disk is a mount, not a plain directory: the
+hub's own configuration has to survive a reboot of the machine, and a mounted
+volume is what the owner controls.
 
 Home Assistant runs with `network_mode: host` because LocalTuya needs UDP 6666/6667 broadcast, TCP/6668, and mDNS - Docker bridge NAT breaks device discovery. Mosquitto and tuya-local-key can stay on the default bridge because they only need TCP ports published to the LAN or to loopback.
 
