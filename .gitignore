@@ -1,0 +1,22 @@
+# Local hub runtime state — secrets and history, never committed.
+deploy/config/homeassistant/.storage/
+deploy/config/homeassistant/*.db
+deploy/config/homeassistant/*.db-*
+deploy/config/homeassistant/*.log
+deploy/config/homeassistant/*.log.*
+deploy/config/mosquitto/passwd
+deploy/config/mosquitto/data/
+deploy/config/tuya-local-key-data/
+deploy/.env
+# Home Assistant runtime artifacts (version marker, run lock, first-run scaffolding).
+deploy/config/homeassistant/.HA_VERSION
+deploy/config/homeassistant/.ha_run.lock
+deploy/config/homeassistant/blueprints/
+deploy/config/homeassistant/.cloud/
+deploy/config/homeassistant/tts/
+# Home Assistant runtime cache (branded integration icons fetched on first boot).
+deploy/config/homeassistant/.cache/
+# Third-party custom integrations installed into the hub (e.g. LocalTuya); not repo source.
+deploy/config/homeassistant/custom_components/
+# Python dependencies Home Assistant installs for integrations at runtime.
+deploy/config/homeassistant/deps/

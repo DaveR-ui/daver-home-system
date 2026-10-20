@@ -1,0 +1,7 @@
+# Hub configuration for the functional demo. Service/mount/port shape follows
+# docs/protocols/bring-up-the-hub.md; entities are synthetic (no Tuya hardware).
+default_config:
+
+homeassistant:
+  name: Daver Home
+  packages: !include_dir_named packages
