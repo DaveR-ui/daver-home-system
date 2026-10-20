@@ -1,0 +1,25 @@
+# Daver home hub — when the backup runs.
+#
+# A SYSTEM timer that triggers daver-backup.service. Install it together with
+# the service (docs/protocols/bring-up-the-hub.md):
+#
+#   sudo sed -e "s|@DEPLOY_DIR@|$PWD/deploy|g" -e "s|@BACKUP_DIR@|/mnt/backups/daver-home-system|g" \
+#     deploy/systemd/daver-backup.timer | sudo tee /etc/systemd/system/daver-backup.timer >/dev/null
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now daver-backup.timer
+#
+# @DEPLOY_DIR@ and @BACKUP_DIR@ are placeholders, substituted at install time.
+[Unit]
+Description=Daily backup timer for the Daver home hub
+Documentation=file://@DEPLOY_DIR@/deploy/scripts/backup.sh
+
+[Timer]
+# 03:30, when the house is quiet and the machine has nothing else to do.
+OnCalendar=*-*-* 03:30:00
+# Catch up after a downtime: a run that was missed (the PC was off) happens as
+# soon as it is back, rather than being silently skipped.
+Persistent=true
+Unit=daver-backup.service
+
+[Install]
+WantedBy=timers.target
