@@ -1,0 +1,47 @@
+# Daver home hub — backup of the hub configuration.
+#
+# A SYSTEM unit (it belongs with the hub's own unit) that runs
+# deploy/scripts/backup.sh once a day and writes one tarball per run. It does
+# not replace the script: the script owns the archive, this unit owns the
+# schedule.
+#
+# Install (from the repository root) — the full sequence is in
+# docs/protocols/bring-up-the-hub.md:
+#
+#   sudo sed -e "s|@DEPLOY_DIR@|$PWD/deploy|g" -e "s|@BACKUP_DIR@|/mnt/backups/daver-home-system|g" \
+#     deploy/systemd/daver-backup.service | sudo tee /etc/systemd/system/daver-backup.service >/dev/null
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now daver-backup.timer
+#
+# @DEPLOY_DIR@ and @BACKUP_DIR@ are placeholders: absolute paths belong to the
+# machine, not to the repository, so both are substituted at install time.
+#
+# The destination must be a MOUNTED VOLUME, ideally on a different physical
+# device than the source disk: the archive holds the owner account, the access
+# tokens and the LocalTuya local keys, so a backup sitting next to the thing it
+# backs up protects nothing. This unit refuses to run otherwise — and it never
+# creates the directory, so a mistyped path cannot quietly fill the root
+# filesystem.
+[Unit]
+Description=Backup of the Daver home hub configuration
+Documentation=file://@DEPLOY_DIR@/deploy/scripts/backup.sh
+After=docker.service
+Requires=docker.service
+# The source (the repository, and with it the Home Assistant config volume) and
+# the destination must both be mounted before the backup runs.
+RequiresMountsFor=@DEPLOY_DIR@ @BACKUP_DIR@
+
+[Service]
+Type=oneshot
+# The destination must exist and must be a mount point in its own right.
+# `findmnt -M` exits non-zero for a plain directory inside another filesystem -
+# exactly the case to refuse, because the script would create it on the root
+# filesystem. The journal names the failing line:
+#   Failed at step EXECStartPre=/usr/bin/findmnt -M <destination>
+ExecStartPre=/usr/bin/test -d @BACKUP_DIR@
+ExecStartPre=/usr/bin/findmnt -M @BACKUP_DIR@
+ExecStart=@DEPLOY_DIR@/scripts/backup.sh @BACKUP_DIR@
+# The backup is I/O bound and must never compete with the hub itself.
+Nice=10
+IOSchedulingClass=idle
+TimeoutStartSec=600

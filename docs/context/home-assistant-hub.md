@@ -3,7 +3,7 @@ last_updated: 2026-10-20
 status: active
 description: The hub's internals and operations - Compose services, LocalTuya, recorder, MQTT integration, automations, restart and backup.
 tags: [home-assistant, operations, localtuya, recorder, automation]
-version: 1.5
+version: 1.6
 related: [hosting-architecture, mqtt-topic-map, provisioning-flow]
 ---
 
@@ -95,7 +95,9 @@ On restart, the app reconnects its WebSocket and resubscribes to `state_changed`
 
 ### Backup routine (no Supervisor)
 
-A Container install has no Supervisor snapshots, so a scripted routine replaces them: archive the HA config volume (including the recorder DB), the mosquitto config, and the compose file, then copy the archive off-host. Verify a restore before trusting the routine; the same script covers the `deploy/` manifests that ship in the repo.
+A Container install has no Supervisor snapshots, so a scripted routine replaces them: archive the HA config volume, the mosquitto config, and the compose file, then copy the archive off-host. Verify a restore before trusting the routine; the same script covers the `deploy/` manifests that ship in the repo.
+
+The script (`deploy/scripts/backup.sh`) **deliberately leaves the recorder database out**: Home Assistant writes it while it runs, so a copy taken now would be a torn database. It is history, not configuration, and the hub rebuilds it — a restored hub starts with an empty history rather than a corrupt one. The archive does include `.storage/` (the owner account, the access tokens and the LocalTuya local keys), which is why it is written `0600` to a mounted volume and why the recorder DB is the one thing that is deliberately absent.
 
 ### Health checks
 

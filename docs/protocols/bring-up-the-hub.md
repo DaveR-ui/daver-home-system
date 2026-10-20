@@ -4,7 +4,7 @@ category: protocols
 tags: [protocol, hosting, docker, compose, systemd, backup]
 aliases: ["Bring Up the Hub"]
 related: [adr-0004-hosting-substrate, hosting-architecture, home-assistant-hub, add-a-tuya-device]
-version: 1.4
+version: 1.5
 status: active
 ---
 
@@ -116,8 +116,48 @@ Ordered, checkable steps:
    directory, and start the stack again. The recorder database is not in the
    archive — history starts empty and the hub rebuilds it.
 
-   Schedule it (e.g. a nightly systemd timer or cron) once the destination
-   directory exists.
+   **Schedule it.** Two units ship in the repository:
+   `deploy/systemd/daver-backup.service` (runs the script once) and
+   `deploy/systemd/daver-backup.timer` (runs it daily at 03:30, and catches up
+   after a downtime). Install them with both placeholders substituted:
+
+   ```sh
+   # 1. choose a destination: a MOUNTED VOLUME, ideally on a different
+   #    physical device than the source disk, and create it
+   sudo mkdir -p /mnt/backups/daver-home-system
+
+   # 2. install both units (both placeholders appear in both files)
+   for u in daver-backup.service daver-backup.timer; do
+     sudo sed -e "s|@DEPLOY_DIR@|$PWD/deploy|g" \
+              -e "s|@BACKUP_DIR@|/mnt/backups/daver-home-system|g" \
+       deploy/systemd/$u | sudo tee /etc/systemd/system/$u >/dev/null
+   done
+   sudo systemctl daemon-reload
+   sudo systemctl enable --now daver-backup.timer
+   ```
+
+   The service **refuses to run** unless the destination exists and is a mount
+   point in its own right (`findmnt -M`), and it never creates the directory:
+   a mistyped path must not quietly fill the root filesystem. The journal names
+   the line that refused (`Failed at step EXECStartPre=…`).
+
+   **Verify one run now:**
+
+   ```sh
+   sudo systemctl start daver-backup.service
+   systemctl list-timers daver-backup.timer
+   ls -l /mnt/backups/daver-home-system/
+   tar -tzf /mnt/backups/daver-home-system/daver-home-system-backup-*.tar.gz | head
+   stat -c '%a %n' /mnt/backups/daver-home-system/daver-home-system-backup-*.tar.gz   # 600
+   ```
+
+   **Retention.** The script never deletes anything — one tarball per night
+   grows without bound. Prune it yourself, on a schedule you control:
+
+   ```sh
+   # keep 30 days; touches only this directory's archives
+   find /mnt/backups/daver-home-system -name 'daver-home-system-backup-*.tar.gz' -mtime +30 -delete
+   ```
 8. **Bump a pinned image.** The pins in `deploy/docker-compose.yml` freeze the
    stack; moving one is deliberate:
 
