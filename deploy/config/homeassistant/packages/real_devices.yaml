@@ -1,0 +1,94 @@
+# Real Tuya devices on the LAN, driven by Home Assistant over the Tuya LAN
+# protocol (TCP/6668) through LocalTuya - no cloud, no MQTT (ADR-0003).
+#
+# The switch channel is the authority for its bulb (channel-authoritative) and
+# the bulb is written only when its state actually differs from the channel's
+# new state (write-on-delta): the semantics the retired tuya-bulb-widget link
+# watch used (docs/context/tuya-bulb-widget-integration.md,
+# adrs/adr-0006-tuya-bulb-widget-role.md). Home Assistant stays the single
+# authority (ADR-0005); the widget's link watch must stay stopped, or the two
+# writers would fight.
+#
+# The datapoints come from observed evidence, never from a guess: the bulbs are
+# Type B (on/off on dp 20, brightness on dp 22) and the two-channel module uses
+# dp 1 and dp 2 for its channels.
+
+automation:
+  - id: sala_tecla_canal_1_mirrors_luz_derecha
+    alias: Sala tecla canal 1 drives sala luz derecha
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: switch.sala_tecla_canal_1
+    conditions:
+      # write-on-delta: the channel is the arbiter (channel-authoritative), so
+      # write the bulb only when its state actually differs from the channel's
+      # new state - and only for a real on/off change.
+      - condition: template
+        value_template: >-
+          {{ trigger.to_state.state in ['on', 'off']
+             and trigger.to_state.state != states('light.sala_luz_derecha') }}
+    actions:
+      - choose:
+          - conditions: "{{ trigger.to_state.state == 'on' }}"
+            sequence:
+              - action: light.turn_on
+                target:
+                  entity_id: light.sala_luz_derecha
+          - conditions: "{{ trigger.to_state.state == 'off' }}"
+            sequence:
+              - action: light.turn_off
+                target:
+                  entity_id: light.sala_luz_derecha
+
+  - id: sala_tecla_canal_1_mirrors_luz_izquierda
+    alias: Sala tecla canal 1 drives sala luz izquierda
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: switch.sala_tecla_canal_1
+    conditions:
+      # Same channel-authoritative / write-on-delta rule as the other mirror.
+      # The second sala bulb ("luz izquierda", the device the widget called
+      # zSalaluces2) follows canal 1 as well - the widget's own link config had
+      # one channel driving both sala bulbs.
+      - condition: template
+        value_template: >-
+          {{ trigger.to_state.state in ['on', 'off']
+             and trigger.to_state.state != states('light.sala_luz_izquierda') }}
+    actions:
+      - choose:
+          - conditions: "{{ trigger.to_state.state == 'on' }}"
+            sequence:
+              - action: light.turn_on
+                target:
+                  entity_id: light.sala_luz_izquierda
+          - conditions: "{{ trigger.to_state.state == 'off' }}"
+            sequence:
+              - action: light.turn_off
+                target:
+                  entity_id: light.sala_luz_izquierda
+
+  - id: comedor_tecla_canal_2_mirrors_luz_sola
+    alias: Comedor tecla canal 2 drives comedor luz sola
+    mode: single
+    triggers:
+      - trigger: state
+        entity_id: switch.comedor_tecla_canal_2
+    conditions:
+      - condition: template
+        value_template: >-
+          {{ trigger.to_state.state in ['on', 'off']
+             and trigger.to_state.state != states('light.comedor_luz_sola') }}
+    actions:
+      - choose:
+          - conditions: "{{ trigger.to_state.state == 'on' }}"
+            sequence:
+              - action: light.turn_on
+                target:
+                  entity_id: light.comedor_luz_sola
+          - conditions: "{{ trigger.to_state.state == 'off' }}"
+            sequence:
+              - action: light.turn_off
+                target:
+                  entity_id: light.comedor_luz_sola

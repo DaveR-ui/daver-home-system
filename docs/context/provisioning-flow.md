@@ -2,7 +2,7 @@
 last_updated: 2026-10-14
 status: active
 description: End-to-end device onboarding — Smart Life pairing, tuya-local-key enumeration, LocalTuya entities, HA authority, app consumption, and the recurring key-rotation maintenance loop.
-tags: [provisioning, flow, pairing, locattuya, key-rotation, maintenance]
+tags: [provisioning, flow, pairing, localtuya, key-rotation, maintenance]
 version: 1.0
 related: [tuya-local-key-integration, home-assistant-hub, mobile-app-design, security-and-privacy]
 ---

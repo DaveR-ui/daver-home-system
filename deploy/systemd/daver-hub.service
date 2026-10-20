@@ -1,0 +1,41 @@
+# Daver home hub — the Compose stack in deploy/.
+#
+# A SYSTEM unit (the bring-up procedure calls for one: it must come back after
+# a reboot without a login). It is NOT installed by this repository — the
+# owner installs it, once, with the commands below.
+#
+# Install (from the repository root):
+#
+#   sudo sed "s|@DEPLOY_DIR@|$PWD/deploy|g" deploy/systemd/daver-hub.service \
+#     | sudo tee /etc/systemd/system/daver-hub.service >/dev/null
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now daver-hub.service
+#   systemctl status daver-hub.service
+#
+# @DEPLOY_DIR@ is a placeholder: an absolute path belongs to the machine, not
+# to the repository, so the path is substituted at install time.
+#
+# The containers themselves carry `restart: unless-stopped`, so a crashed
+# container comes back on its own; this unit only has to put the stack up after
+# a reboot and take it down on stop.
+[Unit]
+Description=Daver home hub (docker compose stack)
+After=docker.service network-online.target
+Requires=docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=@DEPLOY_DIR@
+ExecStart=/usr/bin/docker compose up -d
+ExecReload=/usr/bin/docker compose up -d
+ExecStop=/usr/bin/docker compose down
+# `up -d` returns quickly; a non-zero exit means the stack did not come up, so
+# retry it instead of leaving the hub down until the next reboot.
+Restart=on-failure
+RestartSec=15s
+TimeoutStartSec=300
+
+[Install]
+WantedBy=multi-user.target

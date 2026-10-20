@@ -1,9 +1,9 @@
 ---
-last_updated: 2026-10-15
+last_updated: 2026-10-20
 status: active
 description: Agent entry point for daver-home-system — self-hosted home-IoT hub design (Home Assistant + Mosquitto + Tuya LAN), slices, and doc routing.
 tags: [project, entry-point]
-version: 1.4
+version: 1.9
 doc_language: en
 related: [project-overview]
 ---
@@ -12,11 +12,11 @@ related: [project-overview]
 
 ## Overview
 
-`daver-home-system` is a self-hosted, private home-IoT system in which the owner's always-on PC runs the hub and the phone is the central controller, with everyday control staying on the LAN. The hub is **Home Assistant Container** (the single state authority) plus an **Eclipse Mosquitto** broker (the hub-internal MQTT bus); the devices are existing **Tuya** bulbs and switches, already paired in the Smart Life app, spoken to locally over Wi-Fi via the Tuya LAN protocol (TCP/6668, dps) through the **LocalTuya** integration. Today the hub side is an **architecture design plus a documentation corpus** — no compose manifests and no runnable hub deployment; the only code in the repo is the Flutter app under `app/` — a first hub client (a Home Assistant REST probe and snapshot, plus keystore token custody, plus live state over the Home Assistant WebSocket with reconnect and re-read, plus the control surfaces and the light-command write path), with no hub deployment and no platform build. Two existing local projects are reused as components, unmodified: `tuya-local-key` (harvest and maintain Tuya local keys) and `tuya-bulb-widget` (an existing KDE Plasma desktop control surface). **Anti-goals:** no corporate-cloud control path, no new firmware and no re-pairing of devices, no runnable hub deployment and no Dart or Node backend (the phone app is a thin Home Assistant client, not a backend service), and the referenced repos are never modified by this one.
+`daver-home-system` is a self-hosted, private home-IoT system in which the owner's always-on PC runs the hub and the phone is the central controller, with everyday control staying on the LAN. The hub is **Home Assistant Container** (the single state authority) plus an **Eclipse Mosquitto** broker (the hub-internal MQTT bus); the devices are existing **Tuya** bulbs and switches, already paired in the Smart Life app, spoken to locally over Wi-Fi via the Tuya LAN protocol (TCP/6668, dps) through the **LocalTuya** integration. Today the hub side is a **real self-hosted LAN deployment under `deploy/`** — the Compose stack (Home Assistant Container, Mosquitto, and `tuya-local-key`) together with its configuration, where the demo runs on the owner's **real Tuya devices**, provisioned through LocalTuya; the application code lives under `app/` — a first hub client (a Home Assistant REST probe and snapshot, plus keystore token custody, plus live state over the Home Assistant WebSocket with reconnect and re-read, plus the control surfaces and the light-command write path), with no platform build. Two existing local projects are reused as components, unmodified: `tuya-local-key` (harvest and maintain Tuya local keys) and `tuya-bulb-widget` (an existing KDE Plasma desktop control surface). **Anti-goals:** no corporate-cloud control path, no new firmware and no re-pairing of devices, no hub beyond the self-hosted LAN hub (the real Tuya-device path stays `bring-up-the-hub` + `add-a-tuya-device`; no cloud-hosted or vendor-operated hub), no Dart or Node backend (the phone app is a thin Home Assistant client, not a backend service), and the referenced repos are never modified by this one.
 
 ## Technology Stack
 
-- **Home Assistant Container** — the hub and the single state authority: entities, automations, and history in the recorder SQLite database. LocalTuya is installed via HACS.
+- **Home Assistant Container** — the hub and the single state authority: entities, automations, and history in the recorder SQLite database. LocalTuya is installed as a custom integration (via HACS where the install supports it, or unpacked into `custom_components/localtuya/` on a Container install).
 - **Eclipse Mosquitto** — the hub-internal MQTT broker (port 1883) for MQTT-native devices and future extensions; never the Tuya bulbs.
 - **LocalTuya / tinytuya** — drives Tuya devices over the LAN protocol **TCP/6668** with dps payloads (on/off on dp 1 or dp 20).
 - **HA recorder SQLite** — history storage; no separate database is introduced.
@@ -60,10 +60,10 @@ daver-home-system/
 │   ├── project.md              # agent entry point — the nine fixed sections
 │   ├── context/                # strategic docs, one topic per file + context-index hub
 │   └── protocols/              # project procedures (registered in README, no hub)
-└── deploy/                     # PLANNED (not in the repo yet): compose manifests, mosquitto.conf, .env template
+└── deploy/                     # hub stack: docker-compose.yml + config/{homeassistant,mosquitto}; runtime state gitignored
 ```
 
-`app/` (the Flutter phone app) holds increments 1, 2, and 4 of the hub client — the Home Assistant REST probe/snapshot, keystore token custody, the reactive status banner, live state over the WebSocket with reconnect/backoff, the increment-4 control surfaces (rooms/devices list, bulb detail, switch-mirror status), and the light-command write path; **FVM** 4.3.1 pins Flutter **3.47.7** (Dart 3.13.5) in `app/.fvmrc` and the `android/` / `ios/` platform folders are generated (`fvm flutter analyze` clean, `fvm flutter test` green). `deploy/` likewise holds only intended manifests today.
+`app/` (the Flutter phone app) holds increments 1, 2, and 4 of the hub client — the Home Assistant REST probe/snapshot, keystore token custody, the reactive status banner, live state over the WebSocket with reconnect/backoff, the increment-4 control surfaces (rooms/devices list, bulb detail, switch-mirror status), and the light-command write path; **FVM** 4.3.1 pins Flutter **3.47.7** (Dart 3.13.5) in `app/.fvmrc` and the `android/` / `ios/` platform folders are generated (`fvm flutter analyze` clean, `fvm flutter test` green). `deploy/` now holds the real hub stack — the compose file and the Home Assistant / Mosquitto config that [bring-up-the-hub](protocols/bring-up-the-hub.md) specifies — with its runtime state (`.storage/`, databases, the tuya-local-key data directory) kept out of git by the root `.gitignore`.
 
 ## Key Conventions
 
@@ -103,7 +103,7 @@ Context docs (`docs/context/`):
 - [hosting-architecture](context/hosting-architecture.md) — the hub's layer model, containers, networking, and hosting substrate.
 - [home-assistant-hub](context/home-assistant-hub.md) — Home Assistant as authority: entities, LocalTuya, recorder, automations, backup.
 - [mqtt-topic-map](context/mqtt-topic-map.md) — the MQTT topic taxonomy and JSON payload contract for MQTT-native devices.
-- [mobile-app-design](context/mobile-app-design.md) — the Flutter app (design + `app/` scaffold): HA REST + WebSocket client, token, reconnect.
+- [mobile-app-design](context/mobile-app-design.md) — the Flutter app (design + `app/` implementation): HA REST + WebSocket client, token, reconnect.
 - [provisioning-flow](context/provisioning-flow.md) — end-to-end flow from a paired Tuya device to an HA entity.
 - [tuya-local-key-integration](context/tuya-local-key-integration.md) — the `tuya-local-key` component: harvesting, output fields, rotation.
 - [tuya-bulb-widget-integration](context/tuya-bulb-widget-integration.md) — the `tuya-bulb-widget` boundary: evidence, fallback surface, link-mirror semantics.
@@ -115,6 +115,7 @@ Procedures (`docs/protocols/`):
 - [new-note-protocol](protocols/new-note-protocol.md) — add a new note to the corpus and keep validation green.
 - [bring-up-the-hub](protocols/bring-up-the-hub.md) — bring the hub up from a bare machine.
 - [add-a-tuya-device](protocols/add-a-tuya-device.md) — harvest a local key and add a Tuya device to the hub.
+- [functional-demo-plan](protocols/functional-demo-plan.md) — implementation plan for the functional demo: the real `deploy/` hub driving the owner's real Tuya devices over LocalTuya, the emulator golden path, and the failure-mode drills.
 
 ## Common Lookups
 

@@ -4,7 +4,7 @@ category: adrs
 tags: [adr, control-plane, authority, home-assistant, rest, websocket]
 aliases: ["ADR-0005"]
 related: [adr-index, adr-0004-hosting-substrate, home-assistant-hub, mobile-app-design]
-version: 1.0
+version: 1.1
 status: active
 ---
 
@@ -91,7 +91,7 @@ curl -H "Authorization: Bearer <long-lived-access-token>" \
 
 curl -X POST -H "Authorization: Bearer <long-lived-access-token>" \
      -H "Content-Type: application/json" \
-     -d '{"entity_id": "light.kitchen_ceiling"}' \
+     -d '{"entity_id": "light.sala_luz_derecha"}' \
      http://<host>:8123/api/services/light/turn_on
 ```
 

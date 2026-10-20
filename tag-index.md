@@ -6,7 +6,7 @@ The text above the markers is human-owned; everything between them is generated 
 generator instead. Search here when the corpus vocabulary is unknown.
 
 <!-- BEGIN GENERATED: tags -->
-<!-- snapshot: 2026-10-14 -->
+<!-- snapshot: 2026-10-20 -->
 ## Generated tag index
 
 - **adr** — adr-0001-adopt-documentation-onrails, adr-0002-validate-js-consumer-layout, adr-0003-tuya-lan-protocol-over-mqtt-device-leg, adr-0004-hosting-substrate, adr-0005-control-plane-authority, adr-0006-tuya-bulb-widget-role, adr-index
@@ -16,20 +16,22 @@ generator instead. Search here when the corpus vocabulary is unknown.
 - **automation** — home-assistant-hub
 - **backup** — bring-up-the-hub, security-and-privacy
 - **component** — tuya-bulb-widget-integration, tuya-local-key-integration
-- **compose** — adr-0004-hosting-substrate, bring-up-the-hub
+- **compose** — adr-0004-hosting-substrate, bring-up-the-hub, functional-demo-plan
 - **contract** — mqtt-topic-map, new-note-protocol
 - **control-plane** — adr-0005-control-plane-authority
+- **demo** — functional-demo-plan
 - **deployment** — adr-0004-hosting-substrate
 - **design** — mobile-app-design
 - **docker** — adr-0004-hosting-substrate, bring-up-the-hub, hosting-architecture, tuya-local-key-integration
 - **documentation** — adr-0001-adopt-documentation-onrails, new-note-protocol
 - **dp-inspection** — tuya-bulb-widget-integration
 - **dps** — add-a-tuya-device
+- **emulator** — functional-demo-plan
 - **entry-point** — README, project
 - **flow** — provisioning-flow
 - **flutter** — mobile-app-design
 - **ha-api** — mobile-app-design
-- **home-assistant** — adr-0005-control-plane-authority, home-assistant-hub, mqtt-topic-map, project-overview
+- **home-assistant** — adr-0005-control-plane-authority, functional-demo-plan, home-assistant-hub, mqtt-topic-map, project-overview
 - **hosting** — adr-0004-hosting-substrate, bring-up-the-hub, hosting-architecture
 - **hub** — adr-index, context-index, troubleshooting
 - **index** — README, adr-index, context-index
@@ -37,8 +39,7 @@ generator instead. Search here when the corpus vocabulary is unknown.
 - **key-rotation** — provisioning-flow
 - **lan** — security-and-privacy
 - **local-key** — tuya-local-key-integration
-- **localtuya** — add-a-tuya-device, adr-0006-tuya-bulb-widget-role, home-assistant-hub
-- **locattuya** — provisioning-flow
+- **localtuya** — add-a-tuya-device, adr-0006-tuya-bulb-widget-role, functional-demo-plan, home-assistant-hub, provisioning-flow
 - **maintenance** — provisioning-flow
 - **methodology** — adr-0001-adopt-documentation-onrails
 - **mirror** — tuya-bulb-widget-integration
@@ -52,7 +53,7 @@ generator instead. Search here when the corpus vocabulary is unknown.
 - **plasma** — tuya-bulb-widget-integration
 - **privacy** — security-and-privacy
 - **project** — project
-- **protocol** — add-a-tuya-device, bring-up-the-hub, new-note-protocol
+- **protocol** — add-a-tuya-device, bring-up-the-hub, functional-demo-plan, new-note-protocol
 - **provisioning** — add-a-tuya-device, provisioning-flow
 - **quick-ref** — troubleshooting
 - **recorder** — home-assistant-hub

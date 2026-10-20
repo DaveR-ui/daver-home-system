@@ -1,0 +1,37 @@
+# The hub stack — shape fixed by docs/protocols/bring-up-the-hub.md.
+# The real devices (the owner's Tuya bulbs and switch) run on it; see
+# docs/protocols/functional-demo-plan.md.
+#
+# Images are pinned by DIGEST, not by tag: a tag moves under you (`:stable` is
+# a rolling tag), and a silent upgrade of Home Assistant can change the hub's
+# behaviour without anyone noticing. The readable tag is kept next to each pin
+# for humans. Bump them deliberately — the procedure is in
+# docs/protocols/bring-up-the-hub.md ("Bump a pinned image").
+services:
+  homeassistant:
+    # tag: stable
+    image: ghcr.io/home-assistant/home-assistant@sha256:33afb0659d786213264c2211f8d91c5fe87461c56eba6a3a546eb05fc71e89f4
+    network_mode: host          # LocalTuya needs UDP 6666/6667 broadcast, TCP/6668 and mDNS
+    restart: unless-stopped
+    volumes:
+      - ./config/homeassistant:/config
+
+  eclipse-mosquitto:
+    # tag: 2
+    image: eclipse-mosquitto@sha256:38c0da4f2ef84284d47b3b3eeea1cb3bdeabe81ee10caf0cd5c5ff61ee3ea408
+    ports:
+      - "1883:1883"
+    restart: unless-stopped
+    volumes:
+      - ./config/mosquitto:/mosquitto/config
+
+  tuya-local-key:
+    # tag: latest
+    image: ghcr.io/vineetchoudhary/tuya-local-key@sha256:95d50ec31f38f81d3161e0f9f36855e240171f2bdf6bd2891319ca18e6dc54b2
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8000:8000"   # loopback only; AUTH_USERNAME/AUTH_PASSWORD is the alternative
+    environment:
+      DEVICE_CACHE: "off"       # nothing written to disk; the demo holds no local keys
+    volumes:
+      - ./config/tuya-local-key-data:/data

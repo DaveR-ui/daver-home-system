@@ -4,7 +4,7 @@ category: adrs
 tags: [adr, tuya-bulb-widget, superseded, localtuya, switch-linking]
 aliases: ["ADR-0006"]
 related: [adr-index, adr-0003-tuya-lan-protocol-over-mqtt-device-leg, adr-0005-control-plane-authority, tuya-bulb-widget-integration]
-version: 1.0
+version: 1.1
 status: active
 ---
 
@@ -97,7 +97,7 @@ automation:
     action:
       - service: "light.turn_{{ trigger.to_state.state }}"
         target:
-          entity_id: light.kitchen_ceiling
+          entity_id: light.sala_luz_derecha
 ```
 
 ## Common mistakes

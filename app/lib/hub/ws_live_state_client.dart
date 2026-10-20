@@ -79,6 +79,17 @@ final class WsLiveStateClient implements LiveStateClient {
   /// Upper bound while opening the socket or waiting for a handshake message.
   final Duration connectTimeout;
 
+  /// Upper bound on the best-effort cleanup awaits. A peer that vanished
+  /// mid-stream can leave `StreamIterator.cancel()` or `sink.close()` pending
+  /// forever; without a bound the attempt's `finally` would never return and
+  /// the reconnect loop would stop. A shorter injected [connectTimeout] (as in
+  /// tests) tightens the bound; the default is capped so a killed hub never
+  /// stalls reconnection for the whole handshake budget.
+  Duration get _cleanupTimeout {
+    const Duration cap = Duration(seconds: 2);
+    return connectTimeout < cap ? connectTimeout : cap;
+  }
+
   final Future<WebSocketChannel> Function(Uri uri) _channelFactory;
   final Future<void> Function(Duration duration) _delay;
   final double Function() _jitter;
@@ -136,7 +147,7 @@ final class WsLiveStateClient implements LiveStateClient {
     final StreamIterator<dynamic>? messages = _activeMessages;
     _activeMessages = null;
     if (messages != null) {
-      await messages.cancel();
+      await _cancelMessages(messages);
     }
 
     final WebSocketChannel? channel = _activeChannel;
@@ -281,7 +292,7 @@ final class WsLiveStateClient implements LiveStateClient {
     } finally {
       _activeChannel = null;
       _activeMessages = null;
-      await messages.cancel();
+      await _cancelMessages(messages);
       await _closeSink(channel);
       // Drop the entry now the attempt is over, so only the stop()-in-flight
       // window is guarded and the set never grows across attempts. A racing
@@ -427,11 +438,23 @@ final class WsLiveStateClient implements LiveStateClient {
     await _closeChannelQuietly(channel);
   }
 
+  /// Cancels [messages] with a bound, so a stream whose peer vanished can never
+  /// stall the reconnect loop or `stop()`. The iterator is abandoned on timeout.
+  Future<void> _cancelMessages(StreamIterator<dynamic> messages) async {
+    try {
+      await messages.cancel().timeout(_cleanupTimeout);
+    } on Object {
+      // The stream is abandoned either way.
+    }
+  }
+
   /// Closes a socket that is not owned by an attempt (e.g. one that never became
-  /// ready), ignoring any error from an already-broken socket.
+  /// ready), ignoring any error from an already-broken socket. The await is
+  /// bounded so a peer that never answers the close handshake cannot stall the
+  /// caller.
   Future<void> _closeChannelQuietly(WebSocketChannel channel) async {
     try {
-      await channel.sink.close();
+      await channel.sink.close().timeout(_cleanupTimeout);
     } on Object {
       // A socket that is already gone needs no further action here.
     }

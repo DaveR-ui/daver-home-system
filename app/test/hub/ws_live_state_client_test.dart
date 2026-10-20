@@ -16,11 +16,14 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 /// frames the client sends are recorded in [sent]. When [autoHandshake] is set
 /// it answers `auth` and `subscribe_events` like Home Assistant would.
 class _FakeChannel extends StreamChannelMixin implements WebSocketChannel {
-  _FakeChannel({this.authReply = 'auth_ok'});
+  _FakeChannel({this.authReply = 'auth_ok', this.hangOnClose = false});
 
   final StreamController<Object?> _incoming = StreamController<Object?>();
   final List<Object?> sent = <Object?>[];
   final String authReply;
+
+  /// Models a dead peer: when true, [sink.close] never completes.
+  final bool hangOnClose;
 
   bool sinkClosed = false;
 
@@ -92,6 +95,11 @@ class _FakeSink implements WebSocketSink {
   @override
   Future<void> close([int? closeCode, String? closeReason]) async {
     _channel.sinkClosed = true;
+    if (_channel.hangOnClose) {
+      // A peer that vanished mid-stream never answers the close handshake.
+      await Completer<void>().future;
+      return;
+    }
     if (!_done.isCompleted) {
       _done.complete();
     }
@@ -159,7 +167,10 @@ void main() {
     return channel;
   }
 
-  WsLiveStateClient build({Future<WebSocketChannel> Function(Uri)? factory}) {
+  WsLiveStateClient build({
+    Future<WebSocketChannel> Function(Uri)? factory,
+    Duration connectTimeout = const Duration(seconds: 10),
+  }) {
     return WsLiveStateClient(
       baseUrl: 'http://hub.test:8123',
       tokenReader: () async => token,
@@ -167,6 +178,7 @@ void main() {
       channelFactory: factory ?? defaultFactory,
       delay: (Duration duration) async => delays.add(duration),
       jitter: () => 0.5,
+      connectTimeout: connectTimeout,
     );
   }
 
@@ -365,6 +377,61 @@ void main() {
       events.where((EntityStateEvent e) => e.entityId == 'light.a'),
       isNotEmpty,
     );
+
+    await client.stop();
+  });
+
+  test('a close that never completes does not stall the reconnect loop',
+      () async {
+    hub.byId['light.a'] = const EntitySnapshot(
+      entityId: 'light.a',
+      state: 'on',
+      attributes: <String, dynamic>{},
+    );
+
+    Future<WebSocketChannel> factory(Uri uri) async {
+      // The first socket models a hub killed mid-stream: its close handshake
+      // never completes. Every later socket is healthy.
+      final _FakeChannel channel =
+          _FakeChannel(hangOnClose: channels.isEmpty);
+      channels.add(channel);
+      scheduleMicrotask(
+        () =>
+            channel.push(jsonEncode(<String, Object>{'type': 'auth_required'})),
+      );
+      return channel;
+    }
+
+    final WsLiveStateClient client = build(
+      factory: factory,
+      // Keep the bounded cleanup short so the test does not wait on the real
+      // production bound.
+      connectTimeout: const Duration(milliseconds: 50),
+    );
+    client.setTrackedEntities(<String>['light.a']);
+    client.events.listen(events.add);
+    client.status.listen(statuses.add);
+
+    await client.start();
+    await pumpEventQueue();
+    expect(channels, hasLength(1));
+    expect(statuses.last, LiveStatus.connected);
+
+    // The hub dies. The inbound stream ends, but the fake sink's close() never
+    // completes, exactly like a close handshake to a vanished peer. The attempt
+    // must bound that cleanup and let the reconnect loop run again.
+    await channels.first.closeFromServer();
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+    await pumpEventQueue(times: 200);
+
+    expect(statuses, contains(LiveStatus.reconnecting));
+    expect(channels, hasLength(2));
+    expect(hub.fetched, <String>['light.a']);
+    expect(
+      events.where((EntityStateEvent e) => e.entityId == 'light.a'),
+      isNotEmpty,
+    );
+    expect(statuses.last, LiveStatus.connected);
 
     await client.stop();
   });

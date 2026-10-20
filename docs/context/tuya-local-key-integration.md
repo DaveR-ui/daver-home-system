@@ -1,9 +1,9 @@
 ---
-last_updated: 2026-10-14
+last_updated: 2026-10-20
 status: active
 description: Component C3 — tuya-local-key as the hub's credential harvester and rotation-surveillance tool, its Docker deployment, exposure, storage, config table, and Bluetooth exclusion.
 tags: [tuya-local-key, integration, component, local-key, rotation, docker]
-version: 1.0
+version: 1.1
 related: [provisioning-flow, security-and-privacy, hosting-architecture, troubleshooting]
 ---
 
@@ -87,7 +87,8 @@ Bluetooth-only devices show no `local_key` at all — Tuya's sharing API does no
 # docker compose (hub PC) — loopback-only exposure, cache off
 services:
   tuya-local-key:
-    image: ghcr.io/vineetchoudhary/tuya-local-key:latest
+    # tag: latest — pinned by digest, like the rest of the stack
+    image: ghcr.io/vineetchoudhary/tuya-local-key@sha256:95d50ec31f38f81d3161e0f9f36855e240171f2bdf6bd2891319ca18e6dc54b2
     restart: unless-stopped
     ports:
       - "127.0.0.1:8000:8000"

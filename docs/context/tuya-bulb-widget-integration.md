@@ -1,9 +1,9 @@
 ---
-last_updated: 2026-10-14
+last_updated: 2026-10-20
 status: active
 description: Component C4 — tuya-bulb-widget's role boundary in the hub (dp-inspection evidence, interim desktop fallback, not a writer), its retired link-watch job, and the out-of-band-writer risk.
 tags: [tuya-bulb-widget, integration, component, plasma, dp-inspection, mirror]
-version: 1.0
+version: 1.1
 related: [home-assistant-hub, provisioning-flow, troubleshooting, security-and-privacy]
 ---
 
@@ -72,11 +72,11 @@ tuya-bulb toggle Kitchen
 # the replaced link watch, now an HA automation (semantics preserved)
 trigger:
   - platform: state
-    entity_id: switch.hallway_channel_1
+    entity_id: switch.sala_tecla_canal_1
 action:
   - service: light.turn_on          # or turn_off, on the delta only
     target:
-      entity_id: light.kitchen_ceiling
+      entity_id: light.sala_luz_derecha
 ```
 
 ## Common mistakes

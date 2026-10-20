@@ -1,9 +1,9 @@
 ---
-last_updated: 2026-10-14
+last_updated: 2026-10-20
 status: active
 description: Where the Daver home system runs - layer model, component inventory, hosting topology, stack rationale, and the topology risk register.
 tags: [architecture, hosting, docker, topology, risk]
-version: 1.0
+version: 1.2
 related: [home-assistant-hub, mqtt-topic-map, project-overview]
 ---
 
@@ -33,7 +33,7 @@ flowchart TB
     MQ["Eclipse Mosquitto - hub-internal MQTT bus :1883"]
     TK["tuya-local-key :8000 - harvest + maintain local keys"]
   end
-  APP["Phone app (Flutter, scaffold)"]
+  APP["Phone app (Flutter)"]
   KDE["Plasma applet (tuya-bulb-widget) - out of authoritative path"]
   DEV ---|"Wi-Fi LAN - TCP/6668 + dps - LocalTuya/tinytuya"| HA
   TK ---|"id, uuid, local key, IP, dp map"| HA
@@ -50,8 +50,8 @@ flowchart TB
 | C2 | Eclipse Mosquitto | Hub-internal MQTT bus for MQTT-native devices and future extensions | Owner's PC, `:1883` | Home Assistant (MQTT integration) and MQTT-native devices |
 | C3 | tuya-local-key | Harvests and maintains Tuya local keys; detects silent rotations | Owner's PC, `:8000` | Tuya cloud (provisioning) and the owner's browser; feeds C1 |
 | C4 | tuya-bulb-widget | Provisioning/inspection evidence (dp discovery) plus interim desktop fallback | Owner PC (Plasma applet) | Tuya devices (LAN), directly |
-| C5 | Phone app (Flutter, scaffold) | Thin Home Assistant client: REST commands, WebSocket live state | Phone / desktop | Home Assistant only |
-| C6 | This repo | Design corpus now; `deploy/` compose manifests later | n/a | n/a |
+| C5 | Phone app (Flutter) | Thin Home Assistant client: REST commands, WebSocket live state | Phone / desktop | Home Assistant only |
+| C6 | This repo | Design corpus plus the deployed `deploy/` hub stack | n/a | n/a |
 
 ### Hosting topology
 
@@ -60,23 +60,27 @@ All three services run under one Compose project on the PC, started by a systemd
 Home Assistant runs with `network_mode: host` because LocalTuya needs UDP 6666/6667 broadcast, TCP/6668, and mDNS - Docker bridge NAT breaks device discovery. Mosquitto and tuya-local-key can stay on the default bridge because they only need TCP ports published to the LAN or to loopback.
 
 ```yaml
-# Illustrative only - the real manifests land in deploy/ later.
+# Illustrative only - the real manifests live in deploy/.
+# Images are pinned by digest; the readable tag is kept next to the pin.
 services:
   homeassistant:
-    image: ghcr.io/home-assistant/home-assistant:stable
+    # tag: stable
+    image: ghcr.io/home-assistant/home-assistant@sha256:33afb0659d786213264c2211f8d91c5fe87461c56eba6a3a546eb05fc71e89f4
     network_mode: host          # LocalTuya needs UDP 6666/6667 broadcast, TCP/6668 and mDNS
     restart: unless-stopped
     volumes:
       - ./ha-config:/config
   mosquitto:
-    image: eclipse-mosquitto:2
+    # tag: 2
+    image: eclipse-mosquitto@sha256:38c0da4f2ef84284d47b3b3eeea1cb3bdeabe81ee10caf0cd5c5ff61ee3ea408
     ports:
       - "1883:1883"
     restart: unless-stopped
     volumes:
       - ./mosquitto:/mosquitto/config
   tuya-local-key:
-    image: ghcr.io/vineetchoudhary/tuya-local-key
+    # tag: latest
+    image: ghcr.io/vineetchoudhary/tuya-local-key@sha256:95d50ec31f38f81d3161e0f9f36855e240171f2bdf6bd2891319ca18e6dc54b2
     ports:
       - "127.0.0.1:8000:8000"   # loopback only, or set AUTH_USERNAME / AUTH_PASSWORD
     restart: unless-stopped
@@ -93,6 +97,12 @@ services:
 | `8000` | tuya-local-key | Loopback only, or Basic Auth when deliberately exposed |
 
 Static DHCP leases (reservations by device MAC) keep every Tuya device's IP stable, so LocalTuya's per-device IP mappings survive reboots and reconnects.
+
+**Images are pinned by digest, never by tag.** A tag moves under you — `stable` is
+a rolling tag — and a silent upgrade of Home Assistant changes the hub's
+behaviour with nobody deciding it. The pin freezes the version; moving it is a
+deliberate act, and `[[bring-up-the-hub]]` carries the bump procedure. The
+readable tag stays next to each pin so a human can tell what is pinned.
 
 ### State ownership and data flow
 
