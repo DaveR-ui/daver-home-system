@@ -4,7 +4,7 @@ category: adrs
 tags: [adr, hosting, docker, compose, deployment]
 aliases: ["ADR-0004"]
 related: [adr-index, adr-0003-tuya-lan-protocol-over-mqtt-device-leg, hosting-architecture, bring-up-the-hub]
-version: 1.0
+version: 1.1
 status: active
 ---
 
@@ -138,3 +138,16 @@ volumes:
 - [adr-index.md](adr-index.md)
 - [Hosting architecture](../docs/context/hosting-architecture.md)
 - [Bring up the hub](../docs/protocols/bring-up-the-hub.md)
+
+## Addendum (2026-10-16)
+
+`deploy/docker-compose.yml` and `config/{homeassistant,mosquitto}` now exist in this repository and the stack is deployed. The "no compose file exists in the repository yet" note above records the state at decision time; the decision itself is unchanged. See `[[bring-up-the-hub]]`.
+
+## Addendum (2026-10-20)
+
+The service images are now pinned **by digest** in `deploy/docker-compose.yml`
+(`homeassistant:stable` and `eclipse-mosquitto:2` are rolling tags, so an
+un-pinned hub can change version without anyone deciding it). The tag stays
+next to each pin as a comment, and `[[bring-up-the-hub]]` step 8 carries the
+bump procedure. The substrate decision — self-hosted Docker Compose on the
+owner's PC — is unchanged; pinning only freezes *which* version runs.

@@ -1,9 +1,9 @@
 ---
-last_updated: 2026-10-14
+last_updated: 2026-10-20
 status: active
 description: What the Daver home system is - a private, self-hosted home-IoT ecosystem built on hardware the owner already owns.
 tags: [overview, self-hosted, home-assistant, architecture]
-version: 1.0
+version: 1.3
 related: [hosting-architecture, home-assistant-hub]
 ---
 
@@ -28,7 +28,7 @@ flowchart LR
     HA["Home Assistant<br/>single state authority"]
     MQ["Mosquitto<br/>MQTT-native bus"]
   end
-  APP["Phone app (Flutter, scaffold)<br/>REST + WebSocket"]
+  APP["Phone app (Flutter)<br/>REST + WebSocket"]
   KDE["Plasma applet (tuya-bulb-widget)<br/>outside authoritative path"]
   DEV ---|"LocalTuya / tinytuya - LAN TCP/6668"| HA
   HA ---|"MQTT integration"| MQ
@@ -44,8 +44,8 @@ flowchart LR
 | C2 | Eclipse Mosquitto | Hub-internal MQTT bus for MQTT-native devices and extensions | Owner's PC (Docker) |
 | C3 | tuya-local-key | Harvests and maintains Tuya local keys (occasional, cloud-touching) | Owner's PC (Docker) |
 | C4 | tuya-bulb-widget | Provisioning/inspection evidence plus interim desktop fallback, outside the authoritative path | Owner PC (Plasma applet) |
-| C5 | Phone app (Flutter, scaffold) | Thin Home Assistant client: REST commands + WebSocket live state | Phone / desktop |
-| C6 | This repo | The design corpus now; `deploy/` compose manifests later | n/a |
+| C5 | Phone app (Flutter) | Thin Home Assistant client: REST commands + WebSocket live state | Phone / desktop |
+| C6 | This repo | The design corpus plus the deployed `deploy/` hub stack | n/a |
 
 ### State ownership
 
@@ -54,7 +54,7 @@ Home Assistant entity state is the **single source of truth**. Mosquitto holds M
 ## When to use
 
 - To orient yourself in the corpus before reading any other doc.
-- To check what is in scope now (architecture design and documentation) versus later (a runnable deployment).
+- To check what is in scope now — the architecture design, the documentation corpus, the deployed `deploy/` hub stack, and the Flutter app (increments 1, 2, and 4).
 - To decide whether a new device or idea fits the ecosystem.
 
 ## When not to use
@@ -75,7 +75,7 @@ Home Assistant entity state is the **single source of truth**. Mosquitto holds M
 ## Common mistakes
 
 - Reading the original sketch literally and wiring the Tuya bulbs to MQTT - they speak the Tuya LAN protocol and are reached through LocalTuya ([[adr-0003-tuya-lan-protocol-over-mqtt-device-leg]]).
-- Treating this as a general implementation project. The hub is still architecture plus documentation — no compose manifests and no runnable hub deployment — and the phone app is a minimal scaffold under `app/` that does not reach the hub yet. No Dart or Node backend is planned.
+- Treating this as a general implementation project. The hub is no longer architecture plus documentation — it is a real self-hosted LAN deployment under `deploy/` (Compose manifests, `mosquitto.conf`, and the Home Assistant configuration), the demo runs on the owner's real Tuya devices provisioned through LocalTuya ([[bring-up-the-hub]] plus [[add-a-tuya-device]]), and the phone app under `app/` is a thin Home Assistant client — REST probe and snapshot, keystore token custody, live state over the WebSocket, control surfaces, and the light-command write path — not a backend service. No Dart or Node backend is planned.
 - Assuming the Tuya cloud is never touched - provisioning and local-key rotation are the two exceptions; day-to-day control is LAN-only.
 
 ## References

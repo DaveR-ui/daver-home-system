@@ -6,13 +6,13 @@ by `node validate.js --write` (write-if-diff). Never hand-edit inside the marker
 generator instead.
 
 <!-- BEGIN GENERATED: index -->
-<!-- snapshot: 2026-10-14 -->
+<!-- snapshot: 2026-10-16 -->
 ## Generated index
 
 ### Overview
 
-- Markdown files: 25
-- Context docs: 12 | Notes: 0 | Hubs: 2 | adrs: 6 | templates: 0 | protocols: 3
+- Markdown files: 26
+- Context docs: 12 | Notes: 0 | Hubs: 2 | adrs: 6 | templates: 0 | protocols: 4
 
 ### Tree
 
@@ -43,5 +43,6 @@ generator instead.
 - docs/protocols/
   - add-a-tuya-device.md — protocol, id: `add-a-tuya-device`
   - bring-up-the-hub.md — protocol, id: `bring-up-the-hub`
+  - functional-demo-plan.md — protocol, id: `functional-demo-plan`
   - new-note-protocol.md — protocol, id: `new-note-protocol`
 <!-- END GENERATED: index -->

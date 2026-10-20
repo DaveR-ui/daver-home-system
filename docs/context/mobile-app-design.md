@@ -1,9 +1,9 @@
 ---
-last_updated: 2026-10-15
+last_updated: 2026-10-20
 status: active
 description: Phone-as-controller app — a thin Home Assistant client over REST plus WebSocket, its screens, token custody, discovery, and offline semantics.
 tags: [app, mobile, flutter, rest, websocket, ha-api, design]
-version: 1.6
+version: 1.8
 related: [home-assistant-hub, security-and-privacy, provisioning-flow, hosting-architecture]
 ---
 
@@ -46,6 +46,7 @@ Every request carries `Authorization: Bearer <long-lived-access-token>`.
 ### Discovery and addressing
 
 - Primary: mDNS via the platform API (`nsd` on Android, Bonjour/`NWBrowser` on iOS) to find the HA instance on the LAN.
+- Build-time override: `--dart-define=HUB_BASE_URL=…` re-points the compile-time default (`defaultHubBaseUrl`) at a demo or device address — the emulator's `http://10.0.2.2:8123`, or a real phone's LAN IP — without a code change. See [functional-demo-plan](../protocols/functional-demo-plan.md).
 - Fallback: a static host saved by the user (`http://<hub-host>:8123`), for networks that block multicast.
 - The app discovers the **hub**, never the devices. Tuya bulbs are not mDNS-advertised and are not reachable by the app; they are entities, not peers.
 
@@ -189,7 +190,7 @@ POST /api/services/light/turn_on
 Authorization: Bearer <long-lived-access-token>
 Content-Type: application/json
 
-{"entity_id": "light.kitchen_ceiling", "brightness": 180}
+{"entity_id": "light.sala_luz_derecha", "brightness": 180}
 ```
 
 ```json

@@ -1,9 +1,9 @@
 ---
-last_updated: 2026-10-14
+last_updated: 2026-10-20
 status: active
 description: The hub's internals and operations - Compose services, LocalTuya, recorder, MQTT integration, automations, restart and backup.
 tags: [home-assistant, operations, localtuya, recorder, automation]
-version: 1.0
+version: 1.5
 related: [hosting-architecture, mqtt-topic-map, provisioning-flow]
 ---
 
@@ -31,12 +31,45 @@ Home Assistant runs on the host network in the container because LocalTuya needs
 
 ### LocalTuya: the Tuya device path
 
-LocalTuya is installed through HACS as a custom integration - not the core Tuya integration, which would route through the cloud. Each hub-managed device is configured with its `id`, `host` (static-leased IP), `<local_key>`, and `protocol_version`, then mapped to the datapoints that actually exist:
+LocalTuya is installed as a custom integration - not the core Tuya integration, which would route through the cloud. It reaches the hub through HACS where the install supports it, or by unpacking the release into `deploy/config/homeassistant/custom_components/localtuya/` on a Container install (no Supervisor, no HACS UI); the directory is gitignored, because third-party integration code is installed state, not repo source. It can run in local-only mode (`no_cloud: true`), so the hub needs no Tuya cloud account. Each hub-managed device is configured with its `id`, `host` (static-leased IP), `<local_key>`, and `protocol_version`, then mapped to the datapoints that actually exist:
 
 - on/off on **dp 1** on some devices, **dp 20** on many bulbs - this must be discovered, never assumed;
 - brightness and colour on their own dps where supported.
 
 The `id`, `local_key`, and dp map come from tuya-local-key at provisioning time - see [[tuya-local-key-integration]] and [[provisioning-flow]].
+
+The hub's Tuya devices, as provisioned:
+
+| Entity id | Device | LAN host | Protocol | dps used |
+|---|---|---|---|---|
+| `light.sala_luz_derecha` | A60 RGBCW ("Luz derecha") | 192.168.0.201 | 3.4 | on/off 20, brightness 22, colour temp 23, colour 24, mode 21 |
+| `light.sala_luz_izquierda` | A60 RGBCW ("luz izquierda") | 192.168.0.229 | 3.4 | on/off 20, brightness 22, colour temp 23, colour 24, mode 21 |
+| `light.comedor_luz_sola` | 5-channel interface ("Luz sola") | 192.168.0.226 | 3.5 | on/off 20, brightness 22, colour temp 23, colour 24, mode 21 |
+| `switch.sala_tecla_canal_1` | 2-channel module ("TECLA") | 192.168.0.100 | 3.4 | channel 1 on dp 1 |
+| `switch.comedor_tecla_canal_2` | 2-channel module ("TECLA") | 192.168.0.100 | 3.4 | channel 2 on dp 2 |
+
+**Canal 1 drives both sala bulbs.** The wall switch's channel 1 is the authority
+for `light.sala_luz_derecha` *and* `light.sala_luz_izquierda` - the widget's own
+link config had one channel driving both bulbs of the sala - and channel 2
+drives `light.comedor_luz_sola`. There is no bulb-to-bulb follower and no light
+group: the switch is the single authority, and Home Assistant writes the bulbs
+that follow it (ADR-0005).
+
+All three bulbs are **Type B**: their live dp table reports no dp `1` at all and
+carries the power boolean on dp `20`, with brightness on dp `22` (the value that
+tracks the cloud's `bright_value_v2`) and colour temp on dp `23`. That is
+observed evidence, not a model assumption - a different bulb must be read again.
+
+The channel entities are polled (`scan_interval: 2`) because the two-channel module has no push, and their entity ids carry the room of the bulb each channel drives, so the app's room-scoped switch mirror lists the right bulb.
+
+A device that is online in the cloud but on a network segment the hub cannot
+reach (a guest or isolated SSID) stays invisible to the hub: it answers on no
+subnet and announces nothing on the Tuya broadcast. The hub can only add it
+once it answers on TCP/6668.
+
+### One writer only
+
+Once Home Assistant owns a bulb, the widget's `link watch` is a **second writer** and must stay stopped (`systemctl --user disable --now tuya-bulb-link-watch.service`). It fails silently while its cached keys are stale and would start fighting the hub's automation the moment the keys are refreshed. The hub's own mirror automations live in `deploy/config/homeassistant/packages/real_devices.yaml`.
 
 ### Recorder (SQLite)
 
@@ -62,7 +95,7 @@ On restart, the app reconnects its WebSocket and resubscribes to `state_changed`
 
 ### Backup routine (no Supervisor)
 
-A Container install has no Supervisor snapshots, so a scripted routine replaces them: archive the HA config volume (including the recorder DB), the mosquitto config, and the compose file, then copy the archive off-host. Verify a restore before trusting the routine; the same script covers the `deploy/` manifests when they land.
+A Container install has no Supervisor snapshots, so a scripted routine replaces them: archive the HA config volume (including the recorder DB), the mosquitto config, and the compose file, then copy the archive off-host. Verify a restore before trusting the routine; the same script covers the `deploy/` manifests that ship in the repo.
 
 ### Health checks
 
