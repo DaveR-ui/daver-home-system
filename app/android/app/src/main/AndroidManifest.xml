@@ -2,6 +2,10 @@
     <!-- Release builds need INTERNET to reach the Home Assistant REST API.
          Without it every request fails and the app reads as permanently offline. -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- mDNS discovery needs the multicast lock: the `nsd` plugin holds a
+         WifiManager.MulticastLock to hear Home Assistant's advertisement, and
+         without this permission the platform search fails with a security error. -->
+    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE"/>
     <application
         android:label="daver_home"
         android:name="${applicationName}"

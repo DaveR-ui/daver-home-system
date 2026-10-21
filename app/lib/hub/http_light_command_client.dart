@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import 'hub_address.dart';
 import 'hub_rest_transport.dart';
 import 'http_hub_client.dart';
 import 'light_command.dart';
@@ -19,12 +20,17 @@ final class HttpLightCommandClient implements LightCommandClient {
   HttpLightCommandClient({
     required this.client,
     required this.tokenReader,
-    this.baseUrl = defaultHubBaseUrl,
-  }) : _transport = HubRestTransport(
+    HubAddressReader? baseUrlReader,
+  })  : baseUrlReader = baseUrlReader ?? _defaultHubBaseUrlReader,
+        _transport = HubRestTransport(
           client: client,
           tokenReader: tokenReader,
-          baseUrl: baseUrl,
+          baseUrlReader: baseUrlReader ?? _defaultHubBaseUrlReader,
         );
+
+  /// Falls back to the compile-time default, so a caller that omits the reader
+  /// behaves exactly as the fixed-address client did.
+  static String _defaultHubBaseUrlReader() => defaultHubBaseUrl;
 
   final http.Client client;
 
@@ -32,7 +38,9 @@ final class HttpLightCommandClient implements LightCommandClient {
   /// startup is picked up without rebuilding the client.
   final Future<String?> Function() tokenReader;
 
-  final String baseUrl;
+  /// Reads the hub base URL at use time, shared with the read path and the
+  /// WebSocket so every write addresses the same hub.
+  final HubAddressReader baseUrlReader;
 
   final HubRestTransport _transport;
 

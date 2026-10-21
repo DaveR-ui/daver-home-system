@@ -22,9 +22,10 @@ are reused as components, unmodified: [`tuya-local-key`](docs/context/tuya-local
 Plasma desktop control surface).
 
 Today this repository holds the **architecture design, the documentation corpus, the
-Flutter phone app (increments 1, 2, and 4)** — `app/`, a thin Home Assistant client
+Flutter phone app (increments 1, 2, 3, and 4)** — `app/`, a thin Home Assistant client
 (a REST probe and snapshot plus keystore token custody, a reactive hub-status
-banner, live state over the WebSocket with reconnect and backoff, the control
+banner, live state over the WebSocket with reconnect and backoff, mDNS discovery
+of the hub with the static host as its fallback, the control
 surfaces (rooms/devices list, bulb detail, switch-mirror status), and the
 light-command write path) — and the **real hub stack under `deploy/`**: the Compose
 manifests, `mosquitto.conf`, and the Home Assistant configuration (whose runtime
@@ -43,7 +44,7 @@ single human entry point; there is no second "start here".
 |---|---|---|
 | [docs/project.md](docs/project.md) | Canonical entry point: overview, technology stack, Slices routing table, commands, conventions, domain entities, context index, common lookups. | First, if you are an agent; whenever you need to know where a task lands. |
 | [docs/context/context-index.md](docs/context/context-index.md) | Hub for the strategic context docs — the architecture, the hub, the contracts, the components, security, troubleshooting. | To find the detail behind a slice or topic. |
-| [app/](app/) | The Flutter phone app — hub-client increments 1, 2, and 4: `pubspec.yaml`, `lib/hub/` (HA REST probe/snapshot + keystore token custody), `lib/ui/`, and `lib/main.dart` with the reactive hub-status banner ("cartel"). **FVM** 4.3.1 pins Flutter 3.47.7 (Dart 3.13.5) via `.fvmrc`; `fvm flutter analyze` is clean and `fvm flutter test` is green. | To see how the app is shaped, or to continue building it (implementation plan in [mobile-app-design](docs/context/mobile-app-design.md)). |
+| [app/](app/) | The Flutter phone app — hub-client increments 1, 2, 3, and 4: `pubspec.yaml`, `lib/hub/` (HA REST probe/snapshot + keystore token custody + mDNS discovery of the hub), `lib/ui/`, and `lib/main.dart` with the reactive hub-status banner ("cartel"). **FVM** 4.3.2 pins Flutter 3.47.7 (Dart 3.13.5) via `.fvmrc`; `fvm flutter analyze` is clean and `fvm flutter test` is green. | To see how the app is shaped, or to continue building it (implementation plan in [mobile-app-design](docs/context/mobile-app-design.md)). |
 | [docs/context/hosting-architecture.md](docs/context/hosting-architecture.md) | The architecture itself: corrected layer model, component inventory, topology, state ownership, stack rationale, risk register. | When you need the design in one place. |
 | [docs/protocols/bring-up-the-hub.md](docs/protocols/bring-up-the-hub.md) | Procedure: bring the hub up (Home Assistant, Mosquitto, tuya-local-key) as Compose services on the PC. | When standing the hub up. |
 | [docs/protocols/add-a-tuya-device.md](docs/protocols/add-a-tuya-device.md) | Procedure: add an existing Tuya device — Smart Life pairing, key harvest, LocalTuya, verification. | When adding or re-keying a device. |

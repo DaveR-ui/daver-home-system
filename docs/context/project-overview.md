@@ -3,7 +3,7 @@ last_updated: 2026-10-20
 status: active
 description: What the Daver home system is - a private, self-hosted home-IoT ecosystem built on hardware the owner already owns.
 tags: [overview, self-hosted, home-assistant, architecture]
-version: 1.3
+version: 1.4
 related: [hosting-architecture, home-assistant-hub]
 ---
 
@@ -54,7 +54,7 @@ Home Assistant entity state is the **single source of truth**. Mosquitto holds M
 ## When to use
 
 - To orient yourself in the corpus before reading any other doc.
-- To check what is in scope now — the architecture design, the documentation corpus, the deployed `deploy/` hub stack, and the Flutter app (increments 1, 2, and 4).
+- To check what is in scope now — the architecture design, the documentation corpus, the deployed `deploy/` hub stack, and the Flutter app (increments 1, 2, 3, and 4).
 - To decide whether a new device or idea fits the ecosystem.
 
 ## When not to use

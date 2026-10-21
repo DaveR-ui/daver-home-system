@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:http/http.dart' as http;
 
+import 'hub_address.dart';
 import 'hub_client.dart';
 
 /// Upper bound per request so a silent hub cannot leave the banner spinning or
@@ -21,7 +22,7 @@ final class HubRestTransport {
   HubRestTransport({
     required this.client,
     required this.tokenReader,
-    required this.baseUrl,
+    required this.baseUrlReader,
   });
 
   final http.Client client;
@@ -30,7 +31,10 @@ final class HubRestTransport {
   /// startup is picked up without rebuilding the client.
   final Future<String?> Function() tokenReader;
 
-  final String baseUrl;
+  /// Reads the hub base URL on every request, so an address discovered after
+  /// startup (mDNS answers late by design) is picked up without rebuilding
+  /// the client.
+  final HubAddressReader baseUrlReader;
 
   /// Sends one authenticated request and returns its successful response.
   ///
@@ -44,6 +48,9 @@ final class HubRestTransport {
     String? body,
   }) async {
     final String token = await _readToken();
+    // Read the address ONCE per logical request: resolving twice would let one
+    // request straddle two hubs if a late mDNS answer landed mid-flight.
+    final String baseUrl = baseUrlReader();
     final http.Request request =
         http.Request(method, Uri.parse('$baseUrl$path'))
           ..headers.addAll(<String, String>{

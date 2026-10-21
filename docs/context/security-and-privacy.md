@@ -1,9 +1,9 @@
 ---
-last_updated: 2026-10-20
+last_updated: 2026-10-21
 status: active
 description: The LAN-only trust boundary — exposed ports, token/key custody, the plain-HTTP caveat, the three cloud-touching moments, and the backup policy.
 tags: [security, privacy, lan, trust-boundary, tokens, backup]
-version: 1.1
+version: 1.3
 related: [hosting-architecture, home-assistant-hub, tuya-local-key-integration, mobile-app-design]
 ---
 
@@ -41,6 +41,8 @@ Port 8000 is the sharp edge: its page lists every local key in the account. Bind
 ### Plain-HTTP caveat
 
 There is no TLS inside the LAN: HA on 8123 serves plain HTTP, and a `Bearer` token over HTTP is sniffable by anyone already on the network. This is accepted **under the trusted-LAN assumption**. If the LAN is not trusted (shared Wi-Fi, guests, untrusted devices), put Home Assistant behind local TLS — a certificate on the host — rather than sending the token in the clear. Either way, remote access goes through the VPN path, not through a forwarded plain-HTTP port.
+
+**Discovery trust assumption.** The app now learns the hub's address from an mDNS advertisement on the LAN: any device on that LAN can advertise `_home-assistant._tcp` and, if the app connects to it, receive the long-lived token. The LAN-only boundary above is the mitigation, and the address is **pinned while the app is connected** (banner hidden) — a later advertisement does not move a connected hub. A successful probe alone is **not** the pin: while the app is in a non-connected display state (live socket handshaking or backing off, hub unavailable, phone offline) a new advertisement may still take over the address, and the next probe carries the token to it. Discovery yields an `http://` address; a hub behind local TLS is reached with the build-time `--dart-define=HUB_BASE_URL` override, not through discovery. See [[mobile-app-design]].
 
 ### What the cloud still sees
 

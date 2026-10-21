@@ -12,7 +12,7 @@ class _FakeHttpClient extends http.BaseClient {
   _FakeHttpClient(this._respond);
 
   final Future<http.StreamedResponse> Function(http.BaseRequest request)
-      _respond;
+  _respond;
   final List<http.BaseRequest> requests = <http.BaseRequest>[];
 
   @override
@@ -44,81 +44,88 @@ http.StreamedResponse _reply(int status, String body) {
 
 Future<String?> _token() async => 'tok';
 
-HttpHubClient _client(_FakeHttpClient fake, {Future<String?> Function()? token}) {
+HttpHubClient _client(
+  _FakeHttpClient fake, {
+  Future<String?> Function()? token,
+}) {
   return HttpHubClient(
     client: fake,
     tokenReader: token ?? _token,
-    baseUrl: 'http://hub.test:8123',
+    baseUrlReader: () => 'http://hub.test:8123',
   );
 }
 
 void main() {
   group('probeHub', () {
-    test('200 with API running is true, GET /api/, bearer token sent', () async {
-      final _FakeHttpClient fake = _FakeHttpClient(
-        (_) async => _reply(200, '{"message":"API running."}'),
-      );
+    test(
+      '200 with API running is true, GET /api/, bearer token sent',
+      () async {
+        final _FakeHttpClient fake = _FakeHttpClient(
+          (_) async => _reply(200, '{"message":"API running."}'),
+        );
 
-      expect(await _client(fake).probeHub(), isTrue);
+        expect(await _client(fake).probeHub(), isTrue);
 
-      final http.BaseRequest request = fake.requests.single;
-      expect(request.method, 'GET');
-      expect(request.url.toString(), 'http://hub.test:8123/api/');
-      expect(request.headers['Authorization'], 'Bearer tok');
-      expect(request.headers['Accept'], 'application/json');
-    });
+        final http.BaseRequest request = fake.requests.single;
+        expect(request.method, 'GET');
+        expect(request.url.toString(), 'http://hub.test:8123/api/');
+        expect(request.headers['Authorization'], 'Bearer tok');
+        expect(request.headers['Accept'], 'application/json');
+      },
+    );
 
     test('204 is a successful probe', () async {
       // Any 2xx is a success: HA's read answers 200, but a 204 acceptance must
       // not be reported as a failure — both clients share this one rule.
-      final _FakeHttpClient fake =
-          _FakeHttpClient((_) async => _reply(204, ''));
+      final _FakeHttpClient fake = _FakeHttpClient(
+        (_) async => _reply(204, ''),
+      );
 
       expect(await _client(fake).probeHub(), isTrue);
     });
 
     for (final int status in <int>[401, 403]) {
-      test('$status means the token was rejected: TokenRejectedException',
-          () async {
-        final _FakeHttpClient fake =
-            _FakeHttpClient((_) async => _reply(status, '{"message":"nope"}'));
+      test(
+        '$status means the token was rejected: TokenRejectedException',
+        () async {
+          final _FakeHttpClient fake = _FakeHttpClient(
+            (_) async => _reply(status, '{"message":"nope"}'),
+          );
 
-        expect(
-          _client(fake).probeHub(),
-          throwsA(isA<TokenRejectedException>()),
-        );
-      });
+          expect(
+            _client(fake).probeHub(),
+            throwsA(isA<TokenRejectedException>()),
+          );
+        },
+      );
     }
 
     test('500 is HubUnavailableException', () async {
-      final _FakeHttpClient fake =
-          _FakeHttpClient((_) async => _reply(500, ''));
-
-      expect(
-        _client(fake).probeHub(),
-        throwsA(isA<HubUnavailableException>()),
-      );
-    });
-
-    test('a SocketException with no errno is an unresolvable/unknown hub, not offline',
-        () async {
       final _FakeHttpClient fake = _FakeHttpClient(
-        (_) => Future<http.StreamedResponse>.error(
-          const SocketException('Failed host lookup'),
-        ),
+        (_) async => _reply(500, ''),
       );
 
-      expect(
-        _client(fake).probeHub(),
-        throwsA(isA<HubUnavailableException>()),
-      );
+      expect(_client(fake).probeHub(), throwsA(isA<HubUnavailableException>()));
     });
+
+    test(
+      'a SocketException with no errno is an unresolvable/unknown hub, not offline',
+      () async {
+        final _FakeHttpClient fake = _FakeHttpClient(
+          (_) => Future<http.StreamedResponse>.error(
+            const SocketException('Failed host lookup'),
+          ),
+        );
+
+        expect(
+          _client(fake).probeHub(),
+          throwsA(isA<HubUnavailableException>()),
+        );
+      },
+    );
 
     group('socket errors follow the design-doc offline rule', () {
-      Future<void> expectMapsTo(
-        Object error,
-        Matcher matcher,
-      ) {
+      Future<void> expectMapsTo(Object error, Matcher matcher) {
         final _FakeHttpClient fake = _FakeHttpClient(
           (_) => Future<http.StreamedResponse>.error(error),
         );
@@ -171,21 +178,53 @@ void main() {
         (_) => Future<http.StreamedResponse>.error(TimeoutException('t')),
       );
 
-      expect(
-        _client(fake).probeHub(),
-        throwsA(isA<HubUnavailableException>()),
-      );
+      expect(_client(fake).probeHub(), throwsA(isA<HubUnavailableException>()));
     });
 
-    test('a missing token fails before any request leaves the device', () async {
-      final _FakeHttpClient fake =
-          _FakeHttpClient((_) async => _reply(200, '{}'));
+    test(
+      'a missing token fails before any request leaves the device',
+      () async {
+        final _FakeHttpClient fake = _FakeHttpClient(
+          (_) async => _reply(200, '{}'),
+        );
 
-      expect(
-        _client(fake, token: () async => null).probeHub(),
-        throwsA(isA<HubUnavailableException>()),
+        expect(
+          _client(fake, token: () async => null).probeHub(),
+          throwsA(isA<HubUnavailableException>()),
+        );
+        expect(fake.requests, isEmpty);
+      },
+    );
+  });
+
+  group('the base URL reader seam', () {
+    test('reads the current address once per request', () async {
+      final _FakeHttpClient fake = _FakeHttpClient(
+        (_) async => _reply(200, '{"message":"API running."}'),
       );
-      expect(fake.requests, isEmpty);
+      String baseUrl = 'http://old.test:8123';
+      int reads = 0;
+      final HttpHubClient client = HttpHubClient(
+        client: fake,
+        tokenReader: _token,
+        baseUrlReader: () {
+          reads++;
+          return baseUrl;
+        },
+      );
+
+      await client.probeHub();
+
+      // Exactly one read per request: resolving twice would let one request
+      // straddle two hubs if the address moved mid-flight.
+      expect(reads, 1);
+      expect(fake.requests.single.url.toString(), 'http://old.test:8123/api/');
+
+      baseUrl = 'http://new.test:8123';
+      await client.probeHub();
+
+      expect(reads, 2);
+      expect(fake.requests.last.url.toString(), 'http://new.test:8123/api/');
     });
   });
 
@@ -222,8 +261,9 @@ void main() {
     });
 
     test('a non-list body is HubUnavailableException', () async {
-      final _FakeHttpClient fake =
-          _FakeHttpClient((_) async => _reply(200, '{}'));
+      final _FakeHttpClient fake = _FakeHttpClient(
+        (_) async => _reply(200, '{}'),
+      );
 
       expect(
         _client(fake).fetchStates(),
@@ -232,8 +272,9 @@ void main() {
     });
 
     test('a body that is not JSON is HubUnavailableException', () async {
-      final _FakeHttpClient fake =
-          _FakeHttpClient((_) async => _reply(200, '<html>'));
+      final _FakeHttpClient fake = _FakeHttpClient(
+        (_) async => _reply(200, '<html>'),
+      );
 
       expect(
         _client(fake).fetchStates(),
@@ -256,8 +297,9 @@ void main() {
         ),
       );
 
-      final EntitySnapshot snapshot =
-          await _client(fake).fetchEntity('light.kitchen');
+      final EntitySnapshot snapshot = await _client(
+        fake,
+      ).fetchEntity('light.kitchen');
 
       final http.BaseRequest request = fake.requests.single;
       expect(request.method, 'GET');
@@ -281,16 +323,18 @@ void main() {
         ),
       );
 
-      final EntitySnapshot snapshot =
-          await _client(fake).fetchEntity('sensor.temp');
+      final EntitySnapshot snapshot = await _client(
+        fake,
+      ).fetchEntity('sensor.temp');
 
       expect(snapshot.attributes, isEmpty);
       expect(snapshot.lastUpdated, isNull);
     });
 
     test('401 is TokenRejectedException', () async {
-      final _FakeHttpClient fake =
-          _FakeHttpClient((_) async => _reply(401, '{"message":"nope"}'));
+      final _FakeHttpClient fake = _FakeHttpClient(
+        (_) async => _reply(401, '{"message":"nope"}'),
+      );
 
       expect(
         _client(fake).fetchEntity('light.a'),
@@ -299,7 +343,9 @@ void main() {
     });
 
     test('a non-object body is HubUnavailableException', () async {
-      final _FakeHttpClient fake = _FakeHttpClient((_) async => _reply(200, '[]'));
+      final _FakeHttpClient fake = _FakeHttpClient(
+        (_) async => _reply(200, '[]'),
+      );
 
       expect(
         _client(fake).fetchEntity('light.a'),

@@ -5,6 +5,7 @@ import 'dart:math' as math;
 
 import 'package:web_socket_channel/web_socket_channel.dart';
 
+import 'hub_address.dart';
 import 'hub_client.dart';
 import 'live_state_client.dart';
 
@@ -51,7 +52,7 @@ class _AttemptResult {
 /// attempt and appears on the wire exactly once, in the `auth` message.
 final class WsLiveStateClient implements LiveStateClient {
   WsLiveStateClient({
-    required this.baseUrl,
+    required this.baseUrlReader,
     required this.tokenReader,
     required this.hubClient,
     Future<WebSocketChannel> Function(Uri uri)? channelFactory,
@@ -63,9 +64,11 @@ final class WsLiveStateClient implements LiveStateClient {
         _delay = delay ?? ((Duration duration) => Future<void>.delayed(duration)),
         _jitter = jitter ?? math.Random().nextDouble;
 
-  /// An `http` or `ws` base, e.g. `http://homeassistant.local:8123`; the
-  /// WebSocket URI is derived internally.
-  final String baseUrl;
+  /// Reads the hub base URL (`http` or `ws`) once per connection attempt, so
+  /// every attempt follows the address in effect: a late mDNS answer is picked
+  /// up without rebuilding this client. The WebSocket URI is derived
+  /// internally.
+  final HubAddressReader baseUrlReader;
 
   /// Reads the long-lived token on every attempt, so a token saved after
   /// startup is picked up without rebuilding the client.
@@ -488,8 +491,11 @@ final class WsLiveStateClient implements LiveStateClient {
   }
 
   /// `http(s)://host:8123` becomes `ws(s)://host:8123/api/websocket`.
+  ///
+  /// The address is read ONCE per derivation, so one connection attempt can
+  /// never straddle two hubs.
   Uri get _webSocketUri {
-    final Uri base = Uri.parse(baseUrl);
+    final Uri base = Uri.parse(baseUrlReader());
     final bool secure = base.scheme == 'https' || base.scheme == 'wss';
     return base.replace(scheme: secure ? 'wss' : 'ws', path: '/api/websocket');
   }
