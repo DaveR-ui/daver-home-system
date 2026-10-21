@@ -64,7 +64,7 @@ HttpLightCommandClient _client(
   return HttpLightCommandClient(
     client: fake,
     tokenReader: token ?? _token,
-    baseUrl: 'http://hub.test:8123',
+    baseUrlReader: () => 'http://hub.test:8123',
   );
 }
 

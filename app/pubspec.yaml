@@ -1,8 +1,9 @@
 # daver-home phone app: a thin Home Assistant client for the hub.
-# Flutter SDK 3.47.7 (Dart 3.13.5) is managed through FVM 4.3.1 and pinned in
+# Flutter SDK 3.47.7 (Dart 3.13.5) is managed through FVM 4.3.2 and pinned in
 # .fvmrc; run every Flutter command as `fvm flutter ...` from this directory.
-# Runtime dependencies: `http` (Home Assistant REST) and
-# `flutter_secure_storage` (the long-lived token lives in the OS keystore).
+# Runtime dependencies: `http` (Home Assistant REST),
+# `flutter_secure_storage` (the long-lived token lives in the OS keystore),
+# `web_socket_channel` (live state), and `nsd` (mDNS hub discovery).
 
 name: daver_home
 
@@ -12,13 +13,14 @@ publish_to: 'none'
 version: 0.1.0
 
 environment:
-  sdk: ^3.6.0
+  sdk: ^3.11.0
 
 dependencies:
   flutter:
     sdk: flutter
   flutter_secure_storage: ^9.0.0
   http: ^1.1.0
+  nsd: ^5.0.1
   web_socket_channel: ^3.0.0
 
 dev_dependencies:

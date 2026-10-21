@@ -4,7 +4,7 @@ category: protocols
 tags: [protocol, demo, compose, home-assistant, emulator, localtuya]
 aliases: ["Functional Demo Plan"]
 related: [bring-up-the-hub, add-a-tuya-device, mobile-app-design, home-assistant-hub, hosting-architecture, security-and-privacy, tuya-bulb-widget-integration, adr-0005-control-plane-authority, adr-0006-tuya-bulb-widget-role]
-version: 1.5
+version: 1.6
 status: active
 ---
 
@@ -72,20 +72,24 @@ closed.
 
 **1. Emulator → host networking — build-time `--dart-define`, primary host `10.0.2.2`.**
 
-`app/lib/hub/http_hub_client.dart` line 10 becomes:
+`app/lib/hub/http_hub_client.dart` declares it as:
 
 ```dart
-/// Static fallback host for the hub, per the design doc. mDNS discovery
-/// supersedes this in increment 3; a build may override it with
-/// `--dart-define=HUB_BASE_URL=…` (a device/demo address).
+/// The compile-time default hub base URL, per the design doc.
+///
+/// This one constant is two things: the default address when nothing else says
+/// otherwise, and the demo/device override (`--dart-define=HUB_BASE_URL=…`).
+/// The static fallback the mDNS search falls back to when it finds no hub (a
+/// network that blocks multicast) is the documented default (`defaultHubHost`),
+/// which this constant carries when no override is supplied — so an override
+/// that is present but empty can never leave the app without an address.
 const String defaultHubBaseUrl = String.fromEnvironment(
   'HUB_BASE_URL',
-  defaultValue: 'http://homeassistant.local:8123',
+  defaultValue: defaultHubHost,
 );
 ```
 
-One const, three call sites, because `HttpHubClient`, `HttpLightCommandClient`
-and `main.dart`'s `WsLiveStateClient` all read it. The emulator is run as:
+One const, now **one seed**: `main.dart` builds the shared `HubAddress` from it and hands `address.read` to `HttpHubClient`, `HttpLightCommandClient` and `WsLiveStateClient`, so each client reads the address at use time — once per REST request, once per WebSocket connection attempt — instead of caching a string. The emulator is run as:
 
 ```sh
 fvm flutter run -d <android-device> --dart-define=HUB_BASE_URL=http://10.0.2.2:8123
@@ -93,20 +97,26 @@ fvm flutter run -d <android-device> --dart-define=HUB_BASE_URL=http://10.0.2.2:8
 
 `10.0.2.2` is the emulator's fixed alias for the host's loopback interface, and
 the hub's HA service runs `network_mode: host`, so it answers there directly.
-The default stays byte-identical, so the 126 fake-based tests are unaffected
-(none references `defaultHubBaseUrl` or `homeassistant.local`). Rejected:
-`adb reverse tcp:8123 tcp:8123` — it needs the *same* code change (to reach
-`localhost`) **plus** a per-session step that must be re-run after every
+The default stays byte-identical, so the 205 fake-based tests are unaffected
+(the discovery port is faked in every test, and none reaches the real network).
+Rejected: `adb reverse tcp:8123 tcp:8123` — it needs the *same* code change (to
+reach `localhost`) **plus** a per-session step that must be re-run after every
 emulator restart, so it is kept only as the documented fallback; a runtime
-host-setting UI is increment 3's deferred static-saved-host fallback and would
-add a surface, a controller path and new tests for no demo value.
+host-setting UI would add a surface, a controller path and new tests for no demo
+value. Increment 3 ships the **compile-time static fallback** (the documented
+default `defaultHubHost` = `http://homeassistant.local:8123`, re-pointable with
+`--dart-define`) as its fallback and adds **no runtime host-setting UI**.
 
-**Increment 3 is untouched and still deferred.** The override is a *build-time*
-seam; discovery (increment 3) is a *runtime* concern. When increment 3 ships,
-mDNS or the saved host becomes the runtime source of the base URL and this
-const stays the compile-time default and the demo override. A real phone is
-addressed with the same define and the hub's LAN IP, or with the `adb reverse`
-fallback over USB.
+**Discovery is now a runtime concern that ships (increment 3).** The override is
+still a *build-time* seam and it still wins over discovery: when
+`--dart-define=HUB_BASE_URL=…` is supplied, the mDNS search is **skipped
+entirely**. Otherwise the mDNS search decides the runtime source of the base
+URL, and the documented default (`defaultHubHost` =
+`http://homeassistant.local:8123`) is the static fallback when the search finds
+no hub — an override that is present but *empty* falls through to the search and
+still leaves the app with that documented default, never with no address at all.
+A real phone is addressed with the same define and the hub's LAN IP, or with the
+`adb reverse` fallback over USB.
 
 **2. Real entities — the owner's devices, and one authority per mirror.**
 
@@ -174,7 +184,7 @@ Working directory: repository root, except where noted.
 **Verify:** all seven commands succeed. **Gate:** no later phase starts until
 Phase 0 passes; the pinned toolchain is `fvm flutter`, only from `app/`.
 **Repo green:** untouched — `node validate.js` still exits 0 and
-`fvm flutter test` is still the 126 baseline.
+`fvm flutter test` is still the 205 baseline.
 
 **The JDK 17 row is not decoration.** The Android Gradle build targets Java 17
 (`sourceCompatibility`/`targetCompatibility` = `VERSION_17`,
@@ -330,7 +340,7 @@ fvm flutter test
 ```
 
 **Verify:** `fvm flutter analyze` prints `No issues found!`; `fvm flutter test`
-reports all 126 cases green; `adb devices` shows `emulator-5554  device`. The
+reports all 205 cases green; `adb devices` shows `emulator-5554  device`. The
 default base URL is unchanged, so the suites are untouched by the override.
 **Repo green:** analyze clean and tests green, both from `app/` only.
 
@@ -385,7 +395,7 @@ Drill commands and their observables are in `## Examples`.
 
 ### Phase 6 — Keep the corpus truthful
 
-- **`docs/protocols/functional-demo-plan.md`** (this document, v1.4) — golden
+- **`docs/protocols/functional-demo-plan.md`** (this document, v1.6) — golden
   path on the real devices; the synthetic phase recorded as retired.
 - **`README.md`** — update the navigation row and the intro sentence so they
   describe the demo as running on the real Tuya devices, not on synthetic

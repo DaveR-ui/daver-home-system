@@ -2,16 +2,31 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import 'hub_address.dart';
 import 'hub_client.dart';
 import 'hub_rest_transport.dart';
 
-/// Static fallback host for the hub, per the design doc. mDNS discovery
-/// supersedes this in increment 3; a build may override it with
-/// `--dart-define=HUB_BASE_URL=…` (a device/demo address).
+/// The compile-time default hub base URL, per the design doc.
+///
+/// This one constant is two things: the default address when nothing else says
+/// otherwise, and the demo/device override (`--dart-define=HUB_BASE_URL=…`).
+/// The static fallback the mDNS search falls back to when it finds no hub (a
+/// network that blocks multicast) is the documented default (`defaultHubHost`),
+/// which this constant carries when no override is supplied — so an override
+/// that is present but empty can never leave the app without an address.
 const String defaultHubBaseUrl = String.fromEnvironment(
   'HUB_BASE_URL',
-  defaultValue: 'http://homeassistant.local:8123',
+  defaultValue: defaultHubHost,
 );
+
+/// True when the build supplied an explicit `--dart-define=HUB_BASE_URL=…`.
+///
+/// The constant above cannot tell "unset" from "set to the empty string", so
+/// the override is detected with the companion `bool.hasEnvironment`. It is a
+/// compile-time constant, so it is `false` under `flutter test` — which is why
+/// the precedence rule lives in `HubAddressResolver` behind a `bool`
+/// parameter, not behind this constant.
+const bool hasHubBaseUrlOverride = bool.hasEnvironment('HUB_BASE_URL');
 
 /// The REST implementation of [HubClient] over `package:http`.
 ///
@@ -24,12 +39,17 @@ final class HttpHubClient implements HubClient {
   HttpHubClient({
     required this.client,
     required this.tokenReader,
-    this.baseUrl = defaultHubBaseUrl,
-  }) : _transport = HubRestTransport(
+    HubAddressReader? baseUrlReader,
+  })  : baseUrlReader = baseUrlReader ?? _defaultHubBaseUrlReader,
+        _transport = HubRestTransport(
           client: client,
           tokenReader: tokenReader,
-          baseUrl: baseUrl,
+          baseUrlReader: baseUrlReader ?? _defaultHubBaseUrlReader,
         );
+
+  /// Falls back to the compile-time default, so a caller that omits the reader
+  /// behaves exactly as the fixed-address client did.
+  static String _defaultHubBaseUrlReader() => defaultHubBaseUrl;
 
   final http.Client client;
 
@@ -37,7 +57,9 @@ final class HttpHubClient implements HubClient {
   /// startup is picked up without rebuilding the client.
   final Future<String?> Function() tokenReader;
 
-  final String baseUrl;
+  /// Reads the hub base URL at use time, shared with every other hub client so
+  /// a late mDNS answer takes effect without rebuilding anything.
+  final HubAddressReader baseUrlReader;
 
   final HubRestTransport _transport;
 
