@@ -1,9 +1,9 @@
 ---
-last_updated: 2026-10-20
+last_updated: 2026-10-22
 status: active
 description: The hub's internals and operations - Compose services, LocalTuya, recorder, MQTT integration, automations, restart and backup.
 tags: [home-assistant, operations, localtuya, recorder, automation]
-version: 1.6
+version: 1.9
 related: [hosting-architecture, mqtt-topic-map, provisioning-flow]
 ---
 
@@ -49,8 +49,8 @@ The hub's Tuya devices, as provisioned:
 | `switch.comedor_tecla_canal_2` | 2-channel module ("TECLA") | 192.168.0.100 | 3.4 | channel 2 on dp 2 |
 
 **Canal 1 drives both sala bulbs.** The wall switch's channel 1 is the authority
-for `light.sala_luz_derecha` *and* `light.sala_luz_izquierda` - the widget's own
-link config had one channel driving both bulbs of the sala - and channel 2
+for `light.sala_luz_derecha` *and* `light.sala_luz_izquierda` - the retired legacy
+applet's own link config had one channel driving both bulbs of the sala - and channel 2
 drives `light.comedor_luz_sola`. There is no bulb-to-bulb follower and no light
 group: the switch is the single authority, and Home Assistant writes the bulbs
 that follow it (ADR-0005).
@@ -69,7 +69,7 @@ once it answers on TCP/6668.
 
 ### One writer only
 
-Once Home Assistant owns a bulb, the widget's `link watch` is a **second writer** and must stay stopped (`systemctl --user disable --now tuya-bulb-link-watch.service`). It fails silently while its cached keys are stale and would start fighting the hub's automation the moment the keys are refreshed. The hub's own mirror automations live in `deploy/config/homeassistant/packages/real_devices.yaml`.
+Once Home Assistant owns a bulb, any legacy direct-to-device writer is a **second writer** and must stay stopped. The retired legacy applet's link-watch service failed silently while its cached keys were stale, and it would have started fighting the hub's automation the moment the keys were refreshed. That project is gone, but an install left behind on a machine is not: if a legacy link-watch service or a stale applet is still present, it must stay stopped, or it must be removed. The in-repo desktop surface under `widget/` writes nothing but the switch channel, through this API. The hub's own mirror automations live in `deploy/config/homeassistant/packages/real_devices.yaml`.
 
 ### Recorder (SQLite)
 
@@ -81,13 +81,13 @@ The MQTT integration is the **only** bridge between Mosquitto and Home Assistant
 
 ### Automations (switch -> bulb mirror)
 
-The switch-mirrors-bulb automation inherits the widget's link semantics:
+The switch-mirrors-bulb automation follows the mirror semantics fixed by the decision record:
 
 - **channel-authoritative** - the wall switch's channel is the source; the light follows it;
 - **write-on-delta** - only write the light when the mirrored value actually differs, so no command storm;
 - **dp never guessed** - if the datapoint is unknown, refuse rather than guess.
 
-These rules are the requirements carried over from tuya-bulb-widget's `link watch` behaviour; the implementation is a native Home Assistant automation, not the applet. See [[tuya-bulb-widget-integration]].
+These rules are the requirements recorded in [[adr-0006-tuya-bulb-widget-role]]; the implementation is a native Home Assistant automation, not a desktop applet.
 
 ### Restart behaviour
 
@@ -158,12 +158,11 @@ curl -H "Authorization: Bearer <long-lived-access-token>" http://<host>:8123/api
 - Running Home Assistant on the Docker bridge and losing device discovery.
 - Adding a separate database for history - the recorder's SQLite already covers it.
 - Expecting Supervisor snapshots on a Container install; run the scripted backup instead.
-- Letting the Plasma applet write the bulb while HA thinks otherwise - the applet is a fallback, not a co-authority.
+- Running a stale install of the retired legacy applet while HA thinks otherwise - it writes the bulb directly over TCP/6668. The in-repo `widget/` cannot cause that, because it writes only the switch channel through Home Assistant.
 
 ## References
 
 - [hosting-architecture](hosting-architecture.md)
 - [mqtt-topic-map](mqtt-topic-map.md)
 - [tuya-local-key-integration](tuya-local-key-integration.md)
-- [tuya-bulb-widget-integration](tuya-bulb-widget-integration.md)
 - [troubleshooting](troubleshooting.md)

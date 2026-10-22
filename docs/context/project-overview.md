@@ -1,9 +1,9 @@
 ---
-last_updated: 2026-10-20
+last_updated: 2026-10-22
 status: active
-description: What the Daver home system is - a private, self-hosted home-IoT ecosystem built on hardware the owner already owns.
+description: What the Daver home system is - a private, self-hosted home-IoT ecosystem on hardware the owner already owns, with the phone app and the in-repo desktop widget as its two client surfaces.
 tags: [overview, self-hosted, home-assistant, architecture]
-version: 1.4
+version: 1.6
 related: [hosting-architecture, home-assistant-hub]
 ---
 
@@ -15,7 +15,7 @@ The owner wants private, self-hosted control of his home IoT that does not depen
 
 ## Solution
 
-The Daver home system is a self-hosted, private home-IoT ecosystem. The owner's PC is the always-on server, the phone is the central controller, and nothing day-to-day depends on a corporate cloud. The hub is **Home Assistant + Eclipse Mosquitto** on the PC. The devices are existing Tuya hardware already paired in the Smart Life app - no reflashing, no new firmware, no SoftAP/BLE pairing. Two existing projects are reused unmodified as components: `tuya-local-key` (harvests and maintains Tuya local keys) and `tuya-bulb-widget` (an existing KDE Plasma desktop control surface).
+The Daver home system is a self-hosted, private home-IoT ecosystem. The owner's PC is the always-on server, the phone is the central controller, and nothing day-to-day depends on a corporate cloud. The hub is **Home Assistant + Eclipse Mosquitto** on the PC. The devices are existing Tuya hardware already paired in the Smart Life app - no reflashing, no new firmware, no SoftAP/BLE pairing. One existing project is reused unmodified as a component: `tuya-local-key` (harvests and maintains Tuya local keys). The desktop wall-switch client is **maintained in this repository** under `widget/` and talks to Home Assistant and to nothing else; the earlier upstream project that inspired it is **retired** — it is no longer a dependency, no longer a source of dp evidence, and its history is recorded in ADR-0006 and ADR-0007.
 
 ### Corrected layer model
 
@@ -29,11 +29,11 @@ flowchart LR
     MQ["Mosquitto<br/>MQTT-native bus"]
   end
   APP["Phone app (Flutter)<br/>REST + WebSocket"]
-  KDE["Plasma applet (tuya-bulb-widget)<br/>outside authoritative path"]
+  KDE["Home Keys applet (widget/)<br/>HA REST client"]
   DEV ---|"LocalTuya / tinytuya - LAN TCP/6668"| HA
   HA ---|"MQTT integration"| MQ
   HA ---|"LAN REST + WebSocket, long-lived token"| APP
-  KDE -.->|"direct LAN write (interim fallback)"| DEV
+  KDE ---|"LAN REST, long-lived token - switch channel only"| HA
 ```
 
 ### Component inventory
@@ -43,18 +43,18 @@ flowchart LR
 | C1 | Home Assistant Container | Single state authority: entities, recorder (SQLite), automations, REST + WebSocket API | Owner's PC (Docker) |
 | C2 | Eclipse Mosquitto | Hub-internal MQTT bus for MQTT-native devices and extensions | Owner's PC (Docker) |
 | C3 | tuya-local-key | Harvests and maintains Tuya local keys (occasional, cloud-touching) | Owner's PC (Docker) |
-| C4 | tuya-bulb-widget | Provisioning/inspection evidence plus interim desktop fallback, outside the authoritative path | Owner PC (Plasma applet) |
-| C5 | Phone app (Flutter) | Thin Home Assistant client: REST commands + WebSocket live state | Phone / desktop |
-| C6 | This repo | The design corpus plus the deployed `deploy/` hub stack | n/a |
+| C4 | Phone app (Flutter) | Thin Home Assistant client: REST commands + WebSocket live state | Phone / desktop |
+| C5 | This repo | The design corpus, the deployed `deploy/` hub stack, the Flutter app under `app/`, and the desktop widget under `widget/` | n/a |
+| C6 | Home Keys widget (`widget/`) | Thin Home Assistant REST client for the two wall-switch channels; bulbs display-only | Owner's PC (Plasma 6 applet) |
 
 ### State ownership
 
-Home Assistant entity state is the **single source of truth**. Mosquitto holds MQTT-native device state only, and Home Assistant publishes and consumes it through the MQTT integration, so everything the app can see is a Home Assistant entity. The app is stateless: it is a view plus commands over Home Assistant.
+Home Assistant entity state is the **single source of truth**. Mosquitto holds MQTT-native device state only, and Home Assistant publishes and consumes it through the MQTT integration, so everything a client can see is a Home Assistant entity. The phone app and the desktop widget are stateless: each is a view plus commands over Home Assistant.
 
 ## When to use
 
 - To orient yourself in the corpus before reading any other doc.
-- To check what is in scope now — the architecture design, the documentation corpus, the deployed `deploy/` hub stack, and the Flutter app (increments 1, 2, 3, and 4).
+- To check what is in scope now — the architecture design, the documentation corpus, the deployed `deploy/` hub stack, the Flutter app (increments 1, 2, 3, and 4), and the desktop widget under `widget/`.
 - To decide whether a new device or idea fits the ecosystem.
 
 ## When not to use
@@ -68,7 +68,7 @@ Home Assistant entity state is the **single source of truth**. Mosquitto holds M
 
 1. **Turn a bulb on from the phone.** The app sends `POST /api/services/light/turn_on` to Home Assistant with the entity id and a long-lived access token. Home Assistant writes the device over the LAN through LocalTuya; the resulting `state_changed` event reaches the app over its WebSocket subscription. The app stores no state of its own.
 
-2. **A wall switch drives a bulb through the hub.** A Tuya wall switch sits on the LAN like any other device. A Home Assistant automation mirrors the switch's channel to the matching light entity - channel-authoritative and write-on-delta, the semantics inherited from the widget's link rules ([[tuya-bulb-widget-integration]]). The command path is Home Assistant -> LocalTuya -> bulb; the app only observes the resulting state.
+2. **A wall switch drives a bulb through the hub.** A Tuya wall switch sits on the LAN like any other device. A Home Assistant automation mirrors the switch's channel to the matching light entity - channel-authoritative and write-on-delta, the semantics fixed by the decision record ([[adr-0006-tuya-bulb-widget-role]]). The command path is Home Assistant -> LocalTuya -> bulb; the phone app only observes the resulting state, and the desktop widget writes the channel entity while the automation moves the bulbs.
 
 3. **A local key rotation alert arrives.** A refresh in tuya-local-key finds that a device's local key has silently rotated, so LocalTuya can no longer reach it. The owner refreshes in tuya-local-key and re-enters the new key; see [[provisioning-flow]] and [[troubleshooting]].
 

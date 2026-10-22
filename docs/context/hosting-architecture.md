@@ -1,9 +1,9 @@
 ---
-last_updated: 2026-10-20
+last_updated: 2026-10-22
 status: active
 description: Where the Daver home system runs - layer model, component inventory, hosting topology, stack rationale, and the topology risk register.
 tags: [architecture, hosting, docker, topology, risk]
-version: 1.4
+version: 1.6
 related: [home-assistant-hub, mqtt-topic-map, project-overview]
 ---
 
@@ -23,7 +23,7 @@ Three Docker Compose services run on the owner's existing PC, which doubles as t
 
 ### Layer model
 
-Two honest network legs plus one internal bus. The device leg is the Tuya LAN protocol on TCP/6668; the app leg is Home Assistant's REST + WebSocket API. MQTT never leaves the hub. See [[adr-0003-tuya-lan-protocol-over-mqtt-device-leg]] for why the device leg is not MQTT.
+Two honest network legs plus one internal bus. The device leg is the Tuya LAN protocol on TCP/6668; the client leg is Home Assistant's REST + WebSocket API, shared by the phone app and, over REST only, by the in-repo desktop widget. MQTT never leaves the hub. See [[adr-0003-tuya-lan-protocol-over-mqtt-device-leg]] for why the device leg is not MQTT.
 
 ```mermaid
 flowchart TB
@@ -34,12 +34,12 @@ flowchart TB
     TK["tuya-local-key :8000 - harvest + maintain local keys"]
   end
   APP["Phone app (Flutter)"]
-  KDE["Plasma applet (tuya-bulb-widget) - out of authoritative path"]
+  KDE["Home Keys applet (widget/) - HA REST client<br/>switch channel only"]
   DEV ---|"Wi-Fi LAN - TCP/6668 + dps - LocalTuya/tinytuya"| HA
   TK ---|"id, uuid, local key, IP, dp map"| HA
   HA ---|"MQTT integration (broker is not app-facing)"| MQ
   HA ---|"LAN REST + WebSocket - long-lived token"| APP
-  KDE -.->|"direct LAN write - interim fallback only"| DEV
+  KDE ---|"LAN REST - long-lived token (poll + switch service)"| HA
 ```
 
 ### Component inventory
@@ -49,9 +49,9 @@ flowchart TB
 | C1 | Home Assistant Container | Single state authority: entity state, recorder (SQLite) history, automations, REST + WebSocket API, MQTT integration, LocalTuya | Owner's PC, `network_mode: host` | Tuya devices (LAN), Mosquitto, the app |
 | C2 | Eclipse Mosquitto | Hub-internal MQTT bus for MQTT-native devices and future extensions | Owner's PC, `:1883` | Home Assistant (MQTT integration) and MQTT-native devices |
 | C3 | tuya-local-key | Harvests and maintains Tuya local keys; detects silent rotations | Owner's PC, `:8000` | Tuya cloud (provisioning) and the owner's browser; feeds C1 |
-| C4 | tuya-bulb-widget | Provisioning/inspection evidence (dp discovery) plus interim desktop fallback | Owner PC (Plasma applet) | Tuya devices (LAN), directly |
-| C5 | Phone app (Flutter) | Thin Home Assistant client: REST commands, WebSocket live state | Phone / desktop | Home Assistant only |
-| C6 | This repo | Design corpus plus the deployed `deploy/` hub stack | n/a | n/a |
+| C4 | Phone app (Flutter) | Thin Home Assistant client: REST commands, WebSocket live state | Phone / desktop | Home Assistant only |
+| C5 | This repo | Design corpus, the deployed `deploy/` hub stack, the Flutter app (`app/`), and the desktop widget (`widget/`) | n/a | n/a |
+| C6 | Home Keys widget (`widget/`) | Thin Home Assistant REST client for the two wall-switch channels; bulbs display-only | Owner's PC, Plasma 6 applet (`kpackagetool6`) | Home Assistant only (LAN REST, long-lived token) |
 
 ### Hosting topology
 
@@ -136,12 +136,12 @@ readable tag stays next to each pin so a human can tell what is pinned.
 | --- | --- | --- |
 | Tuya device on/off/brightness/colour | Home Assistant (via LocalTuya) | hub -> device, the only writer of hub-managed bulbs |
 | MQTT-native device state | The device, via the broker | device -> Mosquitto -> HA MQTT integration -> HA entity |
-| App commands | The app | app -> HA REST/WebSocket -> device |
+| App commands | The phone app (and the desktop widget's switch-channel calls) | client -> HA REST/WebSocket -> device |
 | History | Home Assistant recorder (SQLite) | HA -> SQLite |
 
 Down behaviour:
 
-- **Home Assistant down.** The app shows "hub unavailable" and resubscribes when HA returns. It never silently queues commands: state cannot be confirmed while the authority is down.
+- **Home Assistant down.** The phone app shows "hub unavailable" and the desktop widget shows `hub-unreachable`; both resubscribe or re-poll when HA returns. Neither silently queues commands: state cannot be confirmed while the authority is down.
 - **Mosquitto down.** MQTT-native entities go unavailable via their LWT; Tuya devices keep working because they never touch the broker.
 - **tuya-local-key down.** No effect on control; only provisioning and key refresh pause.
 
@@ -151,7 +151,7 @@ Down behaviour:
 | --- | --- | --- |
 | Home Assistant Container | Mature entity model, recorder, automations, auth, REST + WebSocket out of the box | A custom Node backend - would rebuild the entity model, history store, auth, and push layer for no gain |
 | Eclipse Mosquitto | Small, proven broker for MQTT-native devices and future extensions | HA's embedded broker or no broker - would force MQTT-native devices through HA internals and block clean extensions |
-| LocalTuya (via HACS) | Local LAN control with explicit dps mapping; no cloud at runtime | tuya-bulb-widget as the primary control path - single-purpose, and its direct writes leave HA state stale |
+| LocalTuya (via HACS) | Local LAN control with explicit dps mapping; no cloud at runtime | a desktop applet writing Tuya devices directly over TCP/6668 as the primary control path - single-purpose, and its out-of-band writes leave HA state stale |
 | Flutter for the app | One codebase for phone and desktop; thin HA client | Per-platform native apps or a browser UI - more work for a stateless view over HA's API |
 | Docker Compose on the existing PC | Reuses hardware the owner already runs; the PC does other work too | A Home Assistant OS appliance - needs a dedicated machine and gives up the shared PC |
 | SQLite recorder | Built-in history, zero extra service to run and back up | A separate database (PostgreSQL/InfluxDB) - another service to operate for no current need; deferred, not rebuilt |

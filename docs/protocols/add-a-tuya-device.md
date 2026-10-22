@@ -3,8 +3,8 @@ id: add-a-tuya-device
 category: protocols
 tags: [protocol, provisioning, localtuya, tuya-local-key, dps]
 aliases: ["Add a Tuya Device"]
-related: [adr-0006-tuya-bulb-widget-role, tuya-local-key-integration, provisioning-flow, tuya-bulb-widget-integration]
-version: 1.2
+related: [adr-0006-tuya-bulb-widget-role, tuya-local-key-integration, provisioning-flow]
+version: 1.5
 status: active
 ---
 
@@ -40,8 +40,11 @@ Ordered, checkable steps:
    ("Check device key or version"). Re-harvest after any rename or re-pair
    instead of trusting a stored key.
 3. **Note the on/off dp — never guess it.** Type A bulbs use dp `1`; newer Type B
-   bulbs use dp `20`. Confirm from the dp evidence in tuya-local-key, or from
-   `tuya-bulb-widget`'s inspection commands, before configuring anything.
+   bulbs use dp `20`. Confirm from the dp evidence in tuya-local-key's device
+   details before configuring anything. That is the only dp evidence inside this
+   repository: the retired legacy applet's inspection commands are gone with that
+   project, and the in-repo `widget/` does not replace them — it is a Home
+   Assistant client with no Tuya protocol code.
    The decisive check is the **live dp table** of the device on the LAN: a bulb
    that reports no dp `1` at all and reports its power boolean on dp `20` is
    Type B, and its brightness is the dp whose value tracks the cloud's
@@ -58,9 +61,10 @@ Ordered, checkable steps:
      becomes `light.sala_luz_derecha`.
    - The **room comes from the physical layout, not from the device name**:
      a device the owner renamed ("zSalaluces2" → "luz izquierda") no longer
-     carries its room in its name. Take it from the widget's group config (the
-     `sala` group listed "Luz derecha" and "zSalaluces2" together) and from the
-     channel that drives it. When the evidence cannot settle it, provision the
+     carries its room in its name. Take it from the historical grouping
+      recorded for the sala (the `sala` group listed "Luz derecha" and "zSalaluces2"
+     together) and from the channel that drives it. When the
+      evidence cannot settle it, provision the
      device and report the entity id as an open question rather than guessing.
    - The local key lives in the config entry inside
      `deploy/config/homeassistant/.storage/` — gitignored, never in the repo.
@@ -78,12 +82,14 @@ Ordered, checkable steps:
         http://<host>:8123/api/states/light.<room>_<device>
    ```
 6. **If the device is a switch channel meant to drive a bulb, bind the
-   automation.** Its semantics come from the widget's link rules: the channel is
-   authoritative, the target is written **on delta**, dp never guessed — see
-   `[[adr-0006-tuya-bulb-widget-role]]`. Once Home Assistant drives the bulb, the
-   widget's own `link watch` is a second writer: stop it
-   (`systemctl --user disable --now tuya-bulb-link-watch.service`) or the two
-   will fight over the same bulb.
+   automation.** Its semantics come from the decision record: the
+   channel is authoritative, the target is written **on delta**, dp never
+   guessed — see `[[adr-0006-tuya-bulb-widget-role]]`. Once Home Assistant drives
+   the bulb, any legacy direct-to-device writer is a second writer and must stay
+   stopped — remove it if a legacy link-watch service or a stale applet is still
+   present on the machine. The
+   desktop surface itself is `widget/`, which writes only the switch
+   channel through Home Assistant (`[[desktop-widget-surface]]`).
 
 **Maintenance loop (recurring, not optional):**
 
@@ -111,8 +117,8 @@ Adding one existing, LAN-capable Tuya device to the hub.
 #    record id, uuid, local key, IP, category, and every dp + local dp id
 
 # 3. confirm the on/off dp from evidence (never assume)
-tuya-bulb link dps <switch-name>              # widget inspection, cloud metadata
-tuya-bulb link dps <switch-name> --from-live  # LAN fallback
+#    inside the repo the dp evidence is tuya-local-key's device details;
+#    the retired legacy applet's inspection commands are gone with that project
 
 # 5. verify the new entity from HA
 curl -H "Authorization: Bearer <long-lived-access-token>" \
@@ -135,5 +141,4 @@ curl -H "Authorization: Bearer <long-lived-access-token>" \
 - [adr-0006-tuya-bulb-widget-role.md](../../adrs/adr-0006-tuya-bulb-widget-role.md) — the mirror semantics this automation reuses.
 - [tuya-local-key integration](../context/tuya-local-key-integration.md)
 - [Provisioning flow](../context/provisioning-flow.md)
-- [tuya-bulb-widget integration](../context/tuya-bulb-widget-integration.md)
 - [Bring up the hub](bring-up-the-hub.md)

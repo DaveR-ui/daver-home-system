@@ -4,7 +4,7 @@ category: adrs
 tags: [adr, documentation, methodology]
 aliases: ["ADR-0001"]
 related: [adr-0002-validate-js-consumer-layout, adr-index]
-version: 1.0
+version: 1.1
 status: active
 ---
 
@@ -78,3 +78,11 @@ addendum or supersede it with a successor ADR.
 - [adr-index.md](adr-index.md) — the hub these records are registered in.
 - [../docs/project.md](../docs/project.md) — the agent entry point.
 - [../validate.js](../validate.js) — the checker this corpus runs.
+
+## Addendum (2026-10-22) — the sibling repository is retired
+
+The sibling repository named in the body above is retired and its source
+repository is being deleted. This corpus no longer depends on it: the framework
+it adapted is vendored here (`validate.js`, see ADR-0002) and the desktop
+surface it also inspired now lives in this repository under `widget/` (ADR-0007).
+The body above is kept as it was written.

@@ -4,7 +4,7 @@ category: adrs
 tags: [adr, validation, tooling]
 aliases: ["ADR-0002"]
 related: [adr-0001-adopt-documentation-onrails, adr-index]
-version: 1.0
+version: 1.1
 status: active
 ---
 
@@ -72,3 +72,12 @@ change beyond the three points above needs its own ADR.
 - [adr-index.md](adr-index.md) — the hub these records are registered in.
 - [../validate.js](../validate.js) — the adapted copy.
 - [../README.md](../README.md) — the corpus entry point that documents the conventions.
+
+## Addendum (2026-10-22) — the sibling repository is retired
+
+The sibling repository this validator was copied from is retired and its source
+repository is being deleted, so the "copy that file to the repository root"
+instruction in the body above can no longer be followed. The copy in this
+repository (`validate.js`) is complete and self-contained: it differs from the
+reference validator in the three path-mapping changes recorded above and needs
+no external file. The body above is kept as it was written.

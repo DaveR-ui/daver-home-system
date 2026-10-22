@@ -1,10 +1,10 @@
 ---
-last_updated: 2026-10-14
+last_updated: 2026-10-22
 status: active
-description: Quick-ref hub troubleshooting sheet — the eight recurring symptoms keyed by their exact strings, each with context, root cause, fix, and reference.
+description: Quick-ref hub troubleshooting sheet — the twelve recurring symptoms keyed by their exact strings, each with context, root cause, fix, and reference.
 tags: [troubleshooting, symptoms, hub, quick-ref]
-version: 1.0
-related: [mobile-app-design, provisioning-flow, tuya-local-key-integration, tuya-bulb-widget-integration]
+version: 1.2
+related: [mobile-app-design, provisioning-flow, tuya-local-key-integration, desktop-widget-surface]
 ---
 
 # Hub Troubleshooting — Quick Ref
@@ -27,11 +27,11 @@ related: [mobile-app-design, provisioning-flow, tuya-local-key-integration, tuya
 **Fix:** check the systemd unit is enabled and active, and confirm the compose file still sets `network_mode: host` on the services that need it.
 **Reference:** [[hosting-architecture]].
 
-## the app shows a stale bulb state after the Plasma widget was used
-**Context:** the app shows a bulb as on (or off) right after someone toggled it from the KDE Plasma applet.
-**Root cause:** the applet is an out-of-band writer — it wrote the bulb directly over TCP/6668, which Home Assistant never observed, so the HA entity is stale until its next poll.
-**Fix:** re-read the entity to resync, and stop treating the applet as a hub control path.
-**Reference:** [[tuya-bulb-widget-integration]].
+## the app shows a stale bulb state after the old Plasma applet was used
+**Context:** the app shows a bulb as on (or off) right after someone toggled it from a KDE Plasma applet.
+**Root cause:** a **stale install of the retired legacy applet** is still on a panel and wrote the bulb directly over TCP/6668, which Home Assistant never observed, so the HA entity is stale until its next poll. The in-repo `widget/` cannot cause this — it writes only the switch channel, through Home Assistant.
+**Fix:** remove the legacy applet, install `widget/` as the desktop surface, then re-read the entity to resync.
+**Reference:** [[desktop-widget-surface]], [[adr-0006-tuya-bulb-widget-role]].
 
 ## the Mosquitto container exits on startup
 **Context:** the broker container fails to start, or exits shortly after start.
@@ -52,7 +52,31 @@ related: [mobile-app-design, provisioning-flow, tuya-local-key-integration, tuya
 **Reference:** [[home-assistant-hub]].
 
 ## the switch no longer mirrors the bulb after the hub took over
-**Context:** after the hub replaced the widget, pressing the wall switch no longer moves the bulb.
-**Root cause:** `link watch` was retired and either the switch entity is missing from HA or the replacing automation is disabled.
+**Context:** after the hub replaced the legacy link-watch loop, pressing the wall switch no longer moves the bulb.
+**Root cause:** the legacy link-watch loop was retired and either the switch entity is missing from HA or the replacing automation is disabled.
 **Fix:** confirm the switch entity exists and the mirror automation is enabled.
-**Reference:** [[tuya-bulb-widget-integration]], [[home-assistant-hub]].
+**Reference:** [[adr-0006-tuya-bulb-widget-role]], [[home-assistant-hub]].
+
+## the desktop widget says the hub is unreachable
+**Context:** the Home Keys applet shows `hub-unreachable` and its key cards stay disabled.
+**Root cause:** Home Assistant is down, the configured `hubBaseUrl` is wrong, or port 8123 is blocked. The applet's default is now the **loopback address** `http://127.0.0.1:8123`, because the widget runs on the same PC as the hub.
+**Fix:** check `GET /api/` from the same machine, then fix the widget's configuration (hub URL) or the hub itself. An install created before the default changed may still hold the retired default `http://homeassistant.local:8123` in its stored configuration; the widget treats that stored value as unset and resolves the current default, so no manual action is required. If Home Assistant is **not** on the same machine, type its LAN address in **Configure Home Keys… → "Home Assistant URL"** (clearing the field and applying also resolves the default).
+**Reference:** [[desktop-widget-surface]], [[home-assistant-hub]].
+
+## the desktop widget says the token was rejected
+**Context:** the Home Keys applet reports `unauthorized` — Home Assistant answered 401/403 — and invalidates its cached token.
+**Root cause:** the HA long-lived access token was revoked or rotated.
+**Fix:** re-store it with `widget/install.sh token`, then press **Retry** in the widget; Retry re-reads KWallet, so the new token is picked up. No plasmashell restart is needed.
+**Reference:** [[desktop-widget-surface]], [[security-and-privacy]].
+
+## the desktop widget says there is no token
+**Context:** the Home Keys applet reports `token-missing` or `wallet-error` and offers Retry.
+**Root cause:** the KWallet folder or entry is missing, the wallet is locked, or `kwallet-query` is not installed.
+**Fix:** unlock the wallet, install the KWallet command-line tools, or re-run `widget/install.sh token`.
+**Reference:** [[desktop-widget-surface]], [[security-and-privacy]].
+
+## the desktop widget shows a bulb as unavailable
+**Context:** one bulb card in the Home Keys applet reads **Unavailable** while the rest of the card works.
+**Root cause:** Home Assistant cannot reach that bulb, or the entity id in the widget's configuration no longer exists.
+**Fix:** check `deploy/config/homeassistant/packages/real_devices.yaml` and the entity ids configured in the widget.
+**Reference:** [[desktop-widget-surface]], [[home-assistant-hub]], [[provisioning-flow]].

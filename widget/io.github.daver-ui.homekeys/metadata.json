@@ -1,0 +1,18 @@
+{
+    "KPackageStructure": "Plasma/Applet",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "DaveR-ui"
+            }
+        ],
+        "Category": "System Information",
+        "Description": "Controls two wall-switch channels through Home Assistant and shows the bulbs their automations drive. Read-only for the bulbs; Home Assistant stays the single authority.",
+        "Icon": "/icons/homekeys.svg",
+        "Id": "io.github.daver-ui.homekeys",
+        "License": "MIT",
+        "Name": "Home Keys",
+        "Version": "0.1.0"
+    },
+    "X-Plasma-API-Minimum-Version": "6.0"
+}

@@ -28,7 +28,7 @@
  * file carries the bug.
  *
  * ---------------------------------------------------------------------------
- * CONSUMER ADAPTATION (documentation-onrails v1.4 -> tuya-bulb-widget).
+ * CONSUMER ADAPTATION (documentation-onrails v1.4 -> this repository).
  *
  * This is a faithful copy of the reference validator, adapted ONLY for the
  * consumer layout prescribed by the playbook (docs/project.md + docs/context/ +

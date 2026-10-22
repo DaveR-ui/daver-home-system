@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kcfg xmlns="http://www.kde.org/standards/kcfg/1.0"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="http://www.kde.org/standards/kcfg/1.0
+      http://www.kde.org/standards/kcfg/1.0/kcfg.xsd">
+  <kcfgfile name=""/>
+
+  <group name="General">
+    <entry name="hubBaseUrl" type="String">
+      <label>Base URL of the Home Assistant instance, for example http://127.0.0.1:8123. The widget calls GET /api/states/&lt;entity_id&gt; and POST /api/services/switch/&lt;service&gt;.</label>
+      <default>http://127.0.0.1:8123</default>
+    </entry>
+
+    <entry name="pollIntervalSeconds" type="Int">
+      <label>How often the widget reads its entities from Home Assistant, in seconds. One GET request is made per tracked entity.</label>
+      <default>2</default>
+      <min>1</min>
+      <max>60</max>
+    </entry>
+
+    <entry name="walletName" type="String">
+      <label>KWallet wallet that holds the Home Assistant long-lived token.</label>
+      <default>kdewallet</default>
+    </entry>
+
+    <entry name="walletFolder" type="String">
+      <label>KWallet folder that holds the Home Assistant token entry.</label>
+      <default>DaverHomeSystem</default>
+    </entry>
+
+    <entry name="walletKey" type="String">
+      <label>KWallet entry key that holds the Home Assistant token. The token itself is never entered in this configuration page.</label>
+      <default>ha-token</default>
+    </entry>
+
+    <entry name="tecla1SwitchEntity" type="String">
+      <label>Home Assistant switch entity for key 1. This is the only entity the key writes.</label>
+      <default>switch.sala_tecla_canal_1</default>
+    </entry>
+
+    <entry name="tecla1BulbEntities" type="String">
+      <label>Comma-separated light entities that key 1 drives. Display-only: the Home Assistant automation writes them.</label>
+      <default>light.sala_luz_izquierda, light.sala_luz_derecha</default>
+    </entry>
+
+    <entry name="tecla2SwitchEntity" type="String">
+      <label>Home Assistant switch entity for key 2. This is the only entity the key writes.</label>
+      <default>switch.comedor_tecla_canal_2</default>
+    </entry>
+
+    <entry name="tecla2BulbEntities" type="String">
+      <label>Comma-separated light entities that key 2 drives. Display-only: the Home Assistant automation writes them.</label>
+      <default>light.comedor_luz_sola</default>
+    </entry>
+
+    <entry name="iconOn" type="String">
+      <label>Panel icon while the keys are on (any name from the active theme).</label>
+      <default>flashlight-on-symbolic</default>
+    </entry>
+
+    <entry name="iconOff" type="String">
+      <label>Panel icon while the keys are not on (any name from the active theme).</label>
+      <default>flashlight-off-symbolic</default>
+    </entry>
+
+    <entry name="iconUnknown" type="String">
+      <label>Panel icon while the state is unknown, unavailable or mixed, so an unreadable state never looks "off" (any name from the active theme).</label>
+      <default>dialog-information-symbolic</default>
+    </entry>
+  </group>
+</kcfg>
