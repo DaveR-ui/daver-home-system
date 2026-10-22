@@ -1,9 +1,9 @@
 ---
-last_updated: 2026-10-20
+last_updated: 2026-10-21
 status: active
 description: Phone-as-controller app — a thin Home Assistant client over REST plus WebSocket, its screens, token custody, discovery, and offline semantics.
 tags: [app, mobile, flutter, rest, websocket, ha-api, design]
-version: 1.9
+version: 1.10
 related: [home-assistant-hub, security-and-privacy, provisioning-flow, hosting-architecture]
 ---
 
@@ -175,7 +175,7 @@ Done for 3.47.7: `fvm flutter pub get` succeeds, `fvm flutter analyze` reports "
 
 ### Deliberate non-goals
 
-No MQTT client. No `tinytuya` or any Tuya protocol code. No direct TCP/6668 write. No Tuya cloud account. No device-pairing UI — pairing is Smart Life plus [[tuya-local-key-integration]], see [[provisioning-flow]].
+No MQTT client. No `tinytuya` or any Tuya protocol code. No direct TCP/6668 write. No Tuya cloud account. No device-pairing UI — pairing is Smart Life plus [[tuya-local-key-integration]], see [[provisioning-flow]]. The desktop widget in `widget/` is a second thin Home Assistant REST client with the same single-authority rule and its own KWallet token custody — see [[desktop-widget-surface]].
 
 ## When to use
 

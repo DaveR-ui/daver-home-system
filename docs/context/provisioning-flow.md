@@ -1,9 +1,9 @@
 ---
-last_updated: 2026-10-14
+last_updated: 2026-10-22
 status: active
 description: End-to-end device onboarding — Smart Life pairing, tuya-local-key enumeration, LocalTuya entities, HA authority, app consumption, and the recurring key-rotation maintenance loop.
 tags: [provisioning, flow, pairing, localtuya, key-rotation, maintenance]
-version: 1.0
+version: 1.2
 related: [tuya-local-key-integration, home-assistant-hub, mobile-app-design, security-and-privacy]
 ---
 
@@ -42,11 +42,13 @@ sequenceDiagram
 ### Steps in prose
 
 1. **Pair in Smart Life.** The only cloud step for control. The device joins Wi-Fi and is registered to the Tuya account.
-2. **Harvest credentials.** tuya-local-key's QR sharing login enumerates the account and yields, per device: id, uuid, local key, IP, category and product, online status, and **every data point with its local dp id**. See [[tuya-local-key-integration]].
+2. **Harvest credentials.** tuya-local-key's QR sharing login enumerates the account and yields, per device: id, uuid, local key, IP, category and product, online status, and **every data point with its local dp id**. That device-details panel is the dp evidence available **inside this repository**. See [[tuya-local-key-integration]].
 3. **Configure LocalTuya.** Those values go into LocalTuya on the hub; entities appear in Home Assistant. The dp mapping comes from step 2 — never guessed.
-4. **Home Assistant becomes the authority.** Entities are recorded; automations apply policy (for example the switch→bulb mirror that replaces the widget's `link watch`). See [[home-assistant-hub]].
+4. **Home Assistant becomes the authority.** Entities are recorded; automations apply policy (for example the switch→bulb mirror that replaces the retired legacy link-watch loop). See [[home-assistant-hub]].
 5. **The app consumes HA.** Commands via REST, live state via WebSocket. See [[mobile-app-design]].
 6. **Maintenance loop.** Refresh in tuya-local-key, read the change summary, re-enter any rotated key into LocalTuya. Repeat for as long as the ecosystem lives.
+
+**Where the dp evidence lives.** Inside this repository the dp evidence is tuya-local-key's device details (step 2) — every data point with its local dp id. The retired legacy applet's inspection tooling is gone with that project, and the in-repo `widget/` does not replace it: the widget is the tecla surface, a Home Assistant REST client with no Tuya protocol code. dp evidence comes from tuya-local-key alone.
 
 ### Data-flow table
 
@@ -95,7 +97,7 @@ sequenceDiagram
 ## Common mistakes
 
 - **Treating provisioning as one-time.** The key-rotation loop never ends; a device that worked for months can stop tonight without a config change.
-- **Guessing the dp.** A two-channel switch is not reliably `dp 1`/`dp 2`. Read the dp evidence from the enumeration (and the widget's dp inspection) before writing LocalTuya config.
+- **Guessing the dp.** A two-channel switch is not reliably `dp 1`/`dp 2`. Read the dp evidence from tuya-local-key's enumeration before writing LocalTuya config.
 - **Letting the wallet of keys live only in LocalTuya.** With no rotation detection, a silent rotation is discovered by a dead bulb. tuya-local-key's change summary is the surveillance that makes the loop survivable.
 - **Recording a harvested key in a doc, an issue, or git.** Keys live in config and encrypted caches; the corpus validator blocks them; see [[security-and-privacy]].
 

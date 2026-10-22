@@ -3,8 +3,8 @@ id: functional-demo-plan
 category: protocols
 tags: [protocol, demo, compose, home-assistant, emulator, localtuya]
 aliases: ["Functional Demo Plan"]
-related: [bring-up-the-hub, add-a-tuya-device, mobile-app-design, home-assistant-hub, hosting-architecture, security-and-privacy, tuya-bulb-widget-integration, adr-0005-control-plane-authority, adr-0006-tuya-bulb-widget-role]
-version: 1.6
+related: [bring-up-the-hub, add-a-tuya-device, mobile-app-design, home-assistant-hub, hosting-architecture, security-and-privacy, adr-0005-control-plane-authority, adr-0006-tuya-bulb-widget-role]
+version: 1.8
 status: active
 ---
 
@@ -151,14 +151,14 @@ automations drive.
 
 The mirror automations live in
 `deploy/config/homeassistant/packages/real_devices.yaml` and keep the semantics
-the corpus mandates (`[[tuya-bulb-widget-integration]]`,
-`[[adr-0006-tuya-bulb-widget-role]]`): **channel-authoritative** (the wall
-switch is the arbiter; the bulb is written to match it), **write-on-delta** (the
+the corpus mandates (`[[adr-0006-tuya-bulb-widget-role]]`):
+**channel-authoritative** (the wall switch is the arbiter; the bulb is written to
+match it), **write-on-delta** (the
 bulb is written only when its state actually differs from the channel's new
 state), and **dp never guessed** (the channel's datapoint comes from observed
 evidence — dp 1 and dp 2 on this module, dp 20 on the Type B bulbs, which
-report no dp 1 at all). One writer only: with the automation live, the widget's
-`link watch` must stay stopped (`[[home-assistant-hub]]`).
+report no dp 1 at all). One writer only: with the automation live, the retired
+legacy link-watch loop stays stopped (`[[home-assistant-hub]]`).
 
 The app has **no write path for switches**, so the channel is flipped on the hub
 side: HA **Developer Tools → Actions → `switch.turn_on` / `switch.turn_off`**
@@ -543,7 +543,7 @@ let s = ""; process.stdin.on("data", d => s += d).on("end", () => {
 - **Running the demo on unprovisioned hardware.** No LocalTuya entry means no
   entity, and the app shows an empty room — not an error. The entity census in
   Phase 2 is there to catch exactly that.
-- **Leaving the widget's `link watch` running.** Two writers on one bulb: the
+- **Leaving a retired legacy link-watch loop running.** Two writers on one bulb: the
   automation and the desktop loop fight, and HA's state goes stale after every
   applet toggle. The service stays stopped (`[[home-assistant-hub]]`).
 - **Forgetting the cleartext allowance.** Without
@@ -606,8 +606,6 @@ let s = ""; process.stdin.on("data", d => s += d).on("end", () => {
   mirror reuses.
 - [../context/mobile-app-design.md](../context/mobile-app-design.md) — the app's
   surfaces, addressing and offline semantics.
-- [../context/tuya-bulb-widget-integration.md](../context/tuya-bulb-widget-integration.md)
-  — the retired `link watch` semantics the automation inherits.
 - [../context/tuya-local-key-integration.md](../context/tuya-local-key-integration.md)
   — the port-8000 posture and why the container is deployed with no devices.
 - [../context/security-and-privacy.md](../context/security-and-privacy.md) — the

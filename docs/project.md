@@ -1,9 +1,9 @@
 ---
-last_updated: 2026-10-20
+last_updated: 2026-10-22
 status: active
 description: Agent entry point for daver-home-system — self-hosted home-IoT hub design (Home Assistant + Mosquitto + Tuya LAN), slices, and doc routing.
 tags: [project, entry-point]
-version: 1.10
+version: 1.14
 doc_language: en
 related: [project-overview]
 ---
@@ -12,7 +12,7 @@ related: [project-overview]
 
 ## Overview
 
-`daver-home-system` is a self-hosted, private home-IoT system in which the owner's always-on PC runs the hub and the phone is the central controller, with everyday control staying on the LAN. The hub is **Home Assistant Container** (the single state authority) plus an **Eclipse Mosquitto** broker (the hub-internal MQTT bus); the devices are existing **Tuya** bulbs and switches, already paired in the Smart Life app, spoken to locally over Wi-Fi via the Tuya LAN protocol (TCP/6668, dps) through the **LocalTuya** integration. Today the hub side is a **real self-hosted LAN deployment under `deploy/`** — the Compose stack (Home Assistant Container, Mosquitto, and `tuya-local-key`) together with its configuration, where the demo runs on the owner's **real Tuya devices**, provisioned through LocalTuya; the application code lives under `app/` — a first hub client (a Home Assistant REST probe and snapshot, plus keystore token custody, plus live state over the Home Assistant WebSocket with reconnect and re-read, plus mDNS discovery of the hub, plus the control surfaces and the light-command write path), with no platform build. Two existing local projects are reused as components, unmodified: `tuya-local-key` (harvest and maintain Tuya local keys) and `tuya-bulb-widget` (an existing KDE Plasma desktop control surface). **Anti-goals:** no corporate-cloud control path, no new firmware and no re-pairing of devices, no hub beyond the self-hosted LAN hub (the real Tuya-device path stays `bring-up-the-hub` + `add-a-tuya-device`; no cloud-hosted or vendor-operated hub), no Dart or Node backend (the phone app is a thin Home Assistant client, not a backend service), and the referenced repos are never modified by this one.
+`daver-home-system` is a self-hosted, private home-IoT system in which the owner's always-on PC runs the hub and the phone is the central controller, with everyday control staying on the LAN. The hub is **Home Assistant Container** (the single state authority) plus an **Eclipse Mosquitto** broker (the hub-internal MQTT bus); the devices are existing **Tuya** bulbs and switches, already paired in the Smart Life app, spoken to locally over Wi-Fi via the Tuya LAN protocol (TCP/6668, dps) through the **LocalTuya** integration. Today the hub side is a **real self-hosted LAN deployment under `deploy/`** — the Compose stack (Home Assistant Container, Mosquitto, and `tuya-local-key`) together with its configuration, where the demo runs on the owner's **real Tuya devices**, provisioned through LocalTuya; the application code lives under `app/` — a first hub client (a Home Assistant REST probe and snapshot, plus keystore token custody, plus live state over the Home Assistant WebSocket with reconnect and re-read, plus mDNS discovery of the hub, plus the control surfaces and the light-command write path), with no platform build, and `widget/` holds the desktop surface — a KDE Plasma 6 applet that is a thin Home Assistant REST client for the two wall-switch channels. `tuya-local-key` is still reused as a component, unmodified (harvest and maintain Tuya local keys); the KDE Plasma wall-switch surface **lives in this repo** under `widget/`, and the earlier upstream project that inspired it is **retired** — no longer a dependency and no longer a source of evidence (the history is in ADR-0006 and ADR-0007). **Anti-goals:** no corporate-cloud control path, no new firmware and no re-pairing of devices, no hub beyond the self-hosted LAN hub (the real Tuya-device path stays `bring-up-the-hub` + `add-a-tuya-device`; no cloud-hosted or vendor-operated hub), no Dart or Node backend (the phone app is a thin Home Assistant client, not a backend service), and the referenced repos are never modified by this one.
 
 ## Technology Stack
 
@@ -23,6 +23,7 @@ related: [project-overview]
 - **Docker Compose** — the hosting substrate: HA, Mosquitto, and `tuya-local-key` as services on the existing PC (HA uses `network_mode: host`).
 - **`tuya-local-key`** — a container that harvests and maintains Tuya local keys (occasional, cloud-touching).
 - **Flutter** — the phone app under `app/`: a thin Home Assistant REST + WebSocket client. Increments 1, 2, 3 and 4 are in place (REST probe/snapshot plus keystore token custody, live state over the WebSocket with reconnect/backoff, mDNS discovery of the hub with the static host as fallback, and the control surfaces and the light-command write path); **FVM** 4.3.2 pins Flutter **3.47.7** (Dart 3.13.5) via `app/.fvmrc`.
+- **KDE Plasma 6 / Qt 6 QML applet** — the desktop widget under `widget/`: a plasmoid installed with `kpackagetool6`, reading its token through `kwallet-query`, written in pure QML + JavaScript (no Python, no compiled helper).
 - **Pattern:** a single-authority hub with an internal MQTT bus; the app is a thin HA client. There is **no separate Node backend and no separate database**.
 
 ## Slices
@@ -33,7 +34,7 @@ related: [project-overview]
 | app-control-surface | The phone/desktop app design: HA REST + WebSocket client, long-lived token, reconnect semantics | flutter, rest, websocket, token, state_changed, entity, controller, app, reconnect, offline | docs/context/mobile-app-design.md | coder, reviewer |
 | mqtt-contracts | The MQTT topic taxonomy and JSON payload contract for MQTT-native devices and extensions (never the Tuya bulbs) | mqtt, topic, payload, json, mosquitto, casa, habitacion, foco, set, state, sensor | docs/context/mqtt-topic-map.md | coder, reviewer |
 | tuya-provisioning | Harvesting and maintaining Tuya local keys: the tuya-local-key component, LocalTuya credentials, rotation handling | tuya, local key, localtuya, sharing sdk, qr, rotation, dp, devices.cache, provisioning | docs/context/tuya-local-key-integration.md, docs/context/provisioning-flow.md, docs/protocols/add-a-tuya-device.md | coder, reviewer |
-| desktop-widget-component | The existing tuya-bulb-widget component boundary: provisioning evidence, interim fallback surface, link-mirror semantics | tuya-bulb-widget, plasma, applet, tinytuya, 6668, dps, link watch, mirror, fallback | docs/context/tuya-bulb-widget-integration.md | reviewer, explorer |
+| desktop-widget-surface | The in-repo KDE Plasma 6 wall-switch applet under widget/: a thin Home Assistant REST client that writes only the switch channel entities, REST polling, KWallet token custody, and the pure-JS logic boundary | plasma, applet, qml, widget, homekeys, rest, switch, tecla, kwallet, polling, desktop | docs/context/desktop-widget-surface.md, widget/ | coder, reviewer |
 | security-privacy | LAN-only boundary, exposed ports, token handling, local-key storage posture, remote-access policy | security, privacy, lan, token, tls, wireguard, local key, secrets, 0600, exposure, backup | docs/context/security-and-privacy.md | reviewer, architect |
 | docs-tooling | The documentation corpus: entry point, hubs, ADRs, protocols, validator, generated indexes | docs, frontmatter, hub, index, validate, adr, protocol, kebab, tag index | README.md, docs/project.md, adrs/, validate.js, index.md, tag-index.md | documenter, explorer |
 
@@ -45,6 +46,8 @@ Run from the repo root.
 |---|---|
 | `node validate.js` | documentation corpus check (read-only; exits 1 on errors) |
 | `node validate.js --write` | regenerate the `index.md` / `tag-index.md` regions (write-if-diff) |
+| `cd widget && node --test` | widget logic suite — 61 `node:test` cases over `contents/ui/homekeys.js`, no npm dependencies (the runner must start in `widget/`) |
+| `qmllint -I /usr/lib/qt6/qml widget/io.github.daver-ui.homekeys/contents/ui/*.qml widget/io.github.daver-ui.homekeys/contents/ui/config/*.qml` | widget QML syntax check (from the repo root) |
 
 ## Repository Structure
 
@@ -56,6 +59,7 @@ daver-home-system/
 ├── validate.js                 # zero-dependency corpus validator (consumer-adapted copy)
 ├── adrs/                       # append-only decision records + adr-index hub
 ├── app/                        # Flutter phone app — hub-client increments 1, 2 + 3 + 4 (REST + live state + discovery + surfaces + write path)
+├── widget/                     # KDE Plasma 6 applet — thin HA REST wall-switch surface (see widget/README.md)
 ├── docs/
 │   ├── project.md              # agent entry point — the nine fixed sections
 │   ├── context/                # strategic docs, one topic per file + context-index hub
@@ -74,7 +78,7 @@ daver-home-system/
 - The Tuya device leg is the **LAN protocol TCP/6668**, not MQTT (ADR-0003); MQTT is the hub-internal bus only.
 - **Home Assistant is the single state authority** and MQTT is hub-internal (ADR-0005).
 - Local keys and tokens are **never** committed, logged, or written into docs.
-- `tuya-local-key` and `tuya-bulb-widget` are **read-only sources** and are never modified by this repo.
+- `tuya-local-key` is a **read-only source** and is never modified by this repo. The desktop surface under `widget/` is maintained here and writes only the switch channel entities through Home Assistant, never a bulb directly.
 
 ## Domain Entities
 
@@ -89,7 +93,8 @@ daver-home-system/
 - **Long-lived access token** — the HA bearer credential the app presents on REST and WebSocket calls.
 - **Provisioning** — pairing/harvesting a device's credentials (id, local key, ip, dps) for the hub.
 - **Rotation** — a silent change of a device's local key, detected and re-harvested by `tuya-local-key`.
-- **Component** — a reused project (`tuya-local-key`, `tuya-bulb-widget`), never modified here.
+- **Component** — a reused project (`tuya-local-key`), never modified here.
+- **Desktop widget surface** — the in-repo Home Keys Plasma applet under `widget/`; a thin HA REST client whose only write target is the wall-switch channel (`switch.*_tecla_canal_*`).
 - **Slice** — a routing unit in the Slices table binding a change area to its primary doc and agents.
 - **Context doc** — a strategic, one-topic file under `docs/context/`.
 - **Protocol** — a project procedure under `docs/protocols/`.
@@ -106,7 +111,7 @@ Context docs (`docs/context/`):
 - [mobile-app-design](context/mobile-app-design.md) — the Flutter app (design + `app/` implementation): HA REST + WebSocket client, token, reconnect.
 - [provisioning-flow](context/provisioning-flow.md) — end-to-end flow from a paired Tuya device to an HA entity.
 - [tuya-local-key-integration](context/tuya-local-key-integration.md) — the `tuya-local-key` component: harvesting, output fields, rotation.
-- [tuya-bulb-widget-integration](context/tuya-bulb-widget-integration.md) — the `tuya-bulb-widget` boundary: evidence, fallback surface, link-mirror semantics.
+- [desktop-widget-surface](context/desktop-widget-surface.md) — the in-repo Plasma wall-switch applet: HA REST client, switch-channel writes, KWallet token custody.
 - [security-and-privacy](context/security-and-privacy.md) — LAN-only boundary, exposed ports, token and local-key posture.
 - [troubleshooting](context/troubleshooting.md) — symptom→cause table for common failures.
 
@@ -124,7 +129,11 @@ Procedures (`docs/protocols/`):
 | "the bulb stopped responding after a Smart Life re-pair" | docs/context/troubleshooting.md#the-bulb-stopped-responding-after-a-smart-life-re-pair |
 | "LocalTuya reports the device as unavailable" | docs/context/troubleshooting.md#localtuya-reports-the-device-as-unavailable |
 | "the app cannot reach the hub after a PC reboot" | docs/context/troubleshooting.md#the-app-cannot-reach-the-hub-after-a-pc-reboot |
-| "the app shows a stale bulb state after the Plasma widget was used" | docs/context/troubleshooting.md#the-app-shows-a-stale-bulb-state-after-the-plasma-widget-was-used |
+| "the app shows a stale bulb state after the old Plasma applet was used" | docs/context/troubleshooting.md#the-app-shows-a-stale-bulb-state-after-the-old-plasma-applet-was-used |
+| "the desktop widget says the hub is unreachable" | docs/context/troubleshooting.md#the-desktop-widget-says-the-hub-is-unreachable |
+| "the desktop widget says the token was rejected" | docs/context/troubleshooting.md#the-desktop-widget-says-the-token-was-rejected |
+| "the desktop widget says there is no token" | docs/context/troubleshooting.md#the-desktop-widget-says-there-is-no-token |
+| "the desktop widget shows a bulb as unavailable" | docs/context/troubleshooting.md#the-desktop-widget-shows-a-bulb-as-unavailable |
 | "the Mosquitto container exits on startup" | docs/context/troubleshooting.md#the-mosquitto-container-exits-on-startup |
 | "a device shows no local key in tuya-local-key" | docs/context/troubleshooting.md#a-device-shows-no-local-key-in-tuya-local-key |
 | "Home Assistant is unreachable on port 8123" | docs/context/troubleshooting.md#home-assistant-is-unreachable-on-port-8123 |

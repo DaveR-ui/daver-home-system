@@ -6,43 +6,45 @@ The text above the markers is human-owned; everything between them is generated 
 generator instead. Search here when the corpus vocabulary is unknown.
 
 <!-- BEGIN GENERATED: tags -->
-<!-- snapshot: 2026-10-20 -->
+<!-- snapshot: 2026-10-22 -->
 ## Generated tag index
 
-- **adr** — adr-0001-adopt-documentation-onrails, adr-0002-validate-js-consumer-layout, adr-0003-tuya-lan-protocol-over-mqtt-device-leg, adr-0004-hosting-substrate, adr-0005-control-plane-authority, adr-0006-tuya-bulb-widget-role, adr-index
+- **adr** — adr-0001-adopt-documentation-onrails, adr-0002-validate-js-consumer-layout, adr-0003-tuya-lan-protocol-over-mqtt-device-leg, adr-0004-hosting-substrate, adr-0005-control-plane-authority, adr-0006-tuya-bulb-widget-role, adr-0007-home-keys-plasma-widget-over-ha-rest, adr-index
 - **app** — mobile-app-design
 - **architecture** — adr-0003-tuya-lan-protocol-over-mqtt-device-leg, hosting-architecture, project-overview
 - **authority** — adr-0005-control-plane-authority
 - **automation** — home-assistant-hub
 - **backup** — bring-up-the-hub, security-and-privacy
-- **component** — tuya-bulb-widget-integration, tuya-local-key-integration
+- **component** — tuya-local-key-integration
 - **compose** — adr-0004-hosting-substrate, bring-up-the-hub, functional-demo-plan
 - **contract** — mqtt-topic-map, new-note-protocol
 - **control-plane** — adr-0005-control-plane-authority
 - **demo** — functional-demo-plan
 - **deployment** — adr-0004-hosting-substrate
 - **design** — mobile-app-design
+- **desktop** — desktop-widget-surface
+- **desktop-widget** — adr-0007-home-keys-plasma-widget-over-ha-rest
 - **docker** — adr-0004-hosting-substrate, bring-up-the-hub, hosting-architecture, tuya-local-key-integration
 - **documentation** — adr-0001-adopt-documentation-onrails, new-note-protocol
-- **dp-inspection** — tuya-bulb-widget-integration
 - **dps** — add-a-tuya-device
 - **emulator** — functional-demo-plan
 - **entry-point** — README, project
 - **flow** — provisioning-flow
 - **flutter** — mobile-app-design
 - **ha-api** — mobile-app-design
-- **home-assistant** — adr-0005-control-plane-authority, functional-demo-plan, home-assistant-hub, mqtt-topic-map, project-overview
+- **home-assistant** — adr-0005-control-plane-authority, adr-0007-home-keys-plasma-widget-over-ha-rest, functional-demo-plan, home-assistant-hub, home-keys-widget, mqtt-topic-map, project-overview
+- **homeassistant** — desktop-widget-surface
 - **hosting** — adr-0004-hosting-substrate, bring-up-the-hub, hosting-architecture
 - **hub** — adr-index, context-index, troubleshooting
 - **index** — README, adr-index, context-index
-- **integration** — tuya-bulb-widget-integration, tuya-local-key-integration
+- **integration** — tuya-local-key-integration
 - **key-rotation** — provisioning-flow
+- **kwallet** — adr-0007-home-keys-plasma-widget-over-ha-rest, desktop-widget-surface, home-keys-widget
 - **lan** — security-and-privacy
 - **local-key** — tuya-local-key-integration
 - **localtuya** — add-a-tuya-device, adr-0006-tuya-bulb-widget-role, functional-demo-plan, home-assistant-hub, provisioning-flow
 - **maintenance** — provisioning-flow
 - **methodology** — adr-0001-adopt-documentation-onrails
-- **mirror** — tuya-bulb-widget-integration
 - **mobile** — mobile-app-design
 - **mqtt** — adr-0003-tuya-lan-protocol-over-mqtt-device-leg, mqtt-topic-map
 - **navigation** — README, context-index
@@ -50,22 +52,25 @@ generator instead. Search here when the corpus vocabulary is unknown.
 - **overview** — project-overview
 - **pairing** — provisioning-flow
 - **payloads** — mqtt-topic-map
-- **plasma** — tuya-bulb-widget-integration
+- **plasma** — adr-0007-home-keys-plasma-widget-over-ha-rest, desktop-widget-surface, home-keys-widget
+- **polling** — desktop-widget-surface
 - **privacy** — security-and-privacy
 - **project** — project
 - **protocol** — add-a-tuya-device, bring-up-the-hub, functional-demo-plan, new-note-protocol
 - **provisioning** — add-a-tuya-device, provisioning-flow
 - **quick-ref** — troubleshooting
 - **recorder** — home-assistant-hub
-- **rest** — adr-0005-control-plane-authority, mobile-app-design
+- **rest** — adr-0005-control-plane-authority, adr-0007-home-keys-plasma-widget-over-ha-rest, desktop-widget-surface, home-keys-widget, mobile-app-design
 - **risk** — hosting-architecture
 - **rotation** — tuya-local-key-integration
 - **security** — security-and-privacy
 - **self-hosted** — project-overview
 - **superseded** — adr-0006-tuya-bulb-widget-role
-- **switch-linking** — adr-0006-tuya-bulb-widget-role
+- **switch** — desktop-widget-surface
+- **switch-linking** — adr-0006-tuya-bulb-widget-role, adr-0007-home-keys-plasma-widget-over-ha-rest
 - **symptoms** — troubleshooting
 - **systemd** — bring-up-the-hub
+- **tecla** — desktop-widget-surface
 - **tokens** — security-and-privacy
 - **tooling** — adr-0002-validate-js-consumer-layout
 - **topics** — mqtt-topic-map
@@ -73,8 +78,10 @@ generator instead. Search here when the corpus vocabulary is unknown.
 - **troubleshooting** — troubleshooting
 - **trust-boundary** — security-and-privacy
 - **tuya** — adr-0003-tuya-lan-protocol-over-mqtt-device-leg
-- **tuya-bulb-widget** — adr-0006-tuya-bulb-widget-role, tuya-bulb-widget-integration
+- **tuya-bulb-widget** — adr-0006-tuya-bulb-widget-role
 - **tuya-local-key** — add-a-tuya-device, tuya-local-key-integration
 - **validation** — adr-0002-validate-js-consumer-layout
+- **wall-switch** — home-keys-widget
 - **websocket** — adr-0005-control-plane-authority, mobile-app-design
+- **widget** — desktop-widget-surface, home-keys-widget
 <!-- END GENERATED: tags -->

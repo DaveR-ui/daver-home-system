@@ -3,11 +3,9 @@
 #
 # The switch channel is the authority for its bulb (channel-authoritative) and
 # the bulb is written only when its state actually differs from the channel's
-# new state (write-on-delta): the semantics the retired tuya-bulb-widget link
-# watch used (docs/context/tuya-bulb-widget-integration.md,
-# adrs/adr-0006-tuya-bulb-widget-role.md). Home Assistant stays the single
-# authority (ADR-0005); the widget's link watch must stay stopped, or the two
-# writers would fight.
+# new state (write-on-delta): the semantics the retired legacy link watch used
+# (ADR-0006). Home Assistant stays the single authority (ADR-0005); any legacy
+# link watch must stay stopped, or the two writers would fight.
 #
 # The datapoints come from observed evidence, never from a guess: the bulbs are
 # Type B (on/off on dp 20, brightness on dp 22) and the two-channel module uses
